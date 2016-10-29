@@ -3,9 +3,10 @@ import sys
 import extract
 import memory
 import dasm
+import program
 
 
-def main(address):
+def basic_test(address):
     prog = extract.extract("smb.nes")
     mem = memory.Memory()
     mem.map_prog_rom(prog)
@@ -21,10 +22,21 @@ def main(address):
             asm=instruction.assembly_string))
 
 
+def disassemble_program():
+    prog_rom = extract.extract("smb.nes")
+    mem = memory.Memory()
+    mem.map_prog_rom(prog_rom)
+    del prog_rom
+
+    prog = program.Program(mem)
+    dasm.disassemble_program(prog)
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         address = 0x8000
     else:
         address = int(sys.argv[1], base=0)
 
-    main(address)
+    #basic_test(address)
+    disassemble_program()
