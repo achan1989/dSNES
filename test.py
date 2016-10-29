@@ -3,7 +3,7 @@ import sys
 import extract
 import memory
 import dasm
-import program
+import dasm_objects
 
 
 def basic_test(address):
@@ -28,8 +28,8 @@ def disassemble_program():
     mem.map_prog_rom(prog_rom)
     del prog_rom
 
-    prog = program.Program(mem)
-    dasm.disassemble_program(prog)
+    program = dasm_objects.Program(mem)
+    dasm.disassemble_program(program)
 
 
 if __name__ == "__main__":

@@ -1,82 +1,143 @@
 import collections
+import types
 
-import instruction
+
+class BaseInstruction():
+    # The following class variables will be available (will be set by child
+    # classes, access as self._Blah):
+    # _Opcode
+    # _Mnemonic
+    # _Category
+    # _Operand_size
+
+    def __init__(self, mem, address):
+        self._address = address
+        self._operands = self._get_operands(mem)
+
+    def _get_operands(self, mem):
+        """ Get the operands for this instruction. """
+        address = self._address
+        num_operands = self._Operand_size
+        operands = tuple()
+
+        while num_operands > 0:
+            address += 1
+            operands += (mem[address],)
+            num_operands -= 1
+        return operands
+
+    @property
+    def assembly_string(self):
+        operands = "[{} operand bytes todo]".format(self._Operand_size)
+        return " ".join((self._Mnemonic, operands))
+
+    @property
+    def size(self):
+        return 1 + self._Operand_size
+
+    @property
+    def operands(self):
+        return self._operands
+
+    @property
+    def address(self):
+        return self._address
 
 
-def make_instruction_class(opcode, mnemonic, kind, operand_size):
-    classname = "{}_{}_0x{:02X}".format(mnemonic, kind, opcode)
-    return type(classname, (instruction.BaseInstruction,),
+category = types.SimpleNamespace(
+    Absolute="Absolute",
+    AbsoluteX="AbsoluteX",
+    AbsoluteY="AbsoluteY",
+    Accumulator="Accumulator",
+    Direct="Direct",
+    DirectIndirectY="DirectIndirectY",
+    DirectX="DirectX",
+    DirectXIndirect="DirectXIndirect",
+    DirectY="DirectY",
+    Illegal="Illegal",
+    Immediate="Immediate",
+    Implicit="Implicit",
+    JmpAbsolute="JmpAbsolute",
+    JmpAbsoluteIndirect="JmpAbsoluteIndirect",
+    Relative="Relative",
+    Ret="Ret"
+    )
+
+
+def make_instruction_class(opcode, mnemonic, category, operand_size):
+    classname = "{}_{}_0x{:02X}".format(mnemonic, category, opcode)
+    return type(classname, (BaseInstruction,),
         {
         "_Opcode" : opcode,
         "_Mnemonic" : mnemonic,
-        "_Kind" : kind,
+        "_Category" : category,
         "_Operand_size" : operand_size
         })
 
 
 def Absolute(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, "Absolute", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.Absolute, operand_size)
 
 def AbsoluteX(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, "AbsoluteX", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.AbsoluteX, operand_size)
 
 def AbsoluteY(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, "AbsoluteY", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.AbsoluteY, operand_size)
 
 def Accumulator(opcode, mnemonic):
     operand_size = 0
-    return make_instruction_class(opcode, mnemonic, "Accumulator", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.Accumulator, operand_size)
 
 def Direct(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, "Direct", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.Direct, operand_size)
 
 def DirectIndirectY(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, "DirectIndirectY", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.DirectIndirectY, operand_size)
 
 def DirectX(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, "DirectX", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.DirectX, operand_size)
 
 def DirectXIndirect(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, "DirectXIndirect", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.DirectXIndirect, operand_size)
 
 def DirectY(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, "DirectY", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.DirectY, operand_size)
 
 def Illegal(opcode, mnemonic):
     operand_size = 0
-    return make_instruction_class(opcode, mnemonic, "Illegal", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.Illegal, operand_size)
 
 def Immediate(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, "Immediate", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.Immediate, operand_size)
 
 def Implicit(opcode, mnemonic):
     operand_size = 0
-    return make_instruction_class(opcode, mnemonic, "Implicit", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.Implicit, operand_size)
 
 def JmpAbsolute(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, "JmpAbsolute", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.JmpAbsolute, operand_size)
 
 def JmpAbsoluteIndirect(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, "JmpAbsoluteIndirect", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.JmpAbsoluteIndirect, operand_size)
 
 def Relative(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, "Relative", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.Relative, operand_size)
 
 def Ret(opcode, mnemonic):
     operand_size = 0
-    return make_instruction_class(opcode, mnemonic, "Ret", operand_size)
+    return make_instruction_class(opcode, mnemonic, category.Ret, operand_size)
 
 
 opcode_table = [

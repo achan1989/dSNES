@@ -1,4 +1,5 @@
 import opcodes
+import dasm_objects
 
 
 def disassemble_instruction(mem, address):
@@ -7,10 +8,10 @@ def disassemble_instruction(mem, address):
     return instruction
 
 def disassemble_program(program):
-    find_entry_points(program)
+    find_and_label_entry_points(program)
     program.print_entry_points()
 
-def find_entry_points(program):
+def find_and_label_entry_points(program):
     vectors = (
         ("NMI", 0xFFFA),
         ("RESET", 0xFFFC),
