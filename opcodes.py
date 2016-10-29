@@ -398,3 +398,44 @@ opcode_table = [
     AbsoluteX(0xfe, "INC"),
     Illegal(0xff, "???")
 ]
+
+
+def find_instruction(mnemonic=None, category=None):
+    """
+    Find instructions by mnemonic and/or category.
+    """
+    assert not (mnemonic is None and category is None)
+
+    found = []
+    for cls in opcode_table:
+        if (mnemonic is not None) and (mnemonic != cls._Mnemonic):
+            continue
+        if (category is not None) and (category != cls._Category):
+            continue
+        found.append(cls)
+
+    return found
+
+def find_unique_instruction(mnemonic=None, category=None):
+    found = find_instruction(mnemonic, category)
+    assert len(found) == 1
+    return found[0]
+
+
+conditional_jump_classes = frozenset([
+    find_unique_instruction("BCC"),
+    find_unique_instruction("BCS"),
+    find_unique_instruction("BEQ"),
+    find_unique_instruction("BMI"),
+    find_unique_instruction("BNE"),
+    find_unique_instruction("BPL"),
+    find_unique_instruction("BVC"),
+    find_unique_instruction("BVS"),
+    ])
+
+unconditional_jump_classes = frozenset([
+    find_unique_instruction("JMP"),
+    find_unique_instruction("JSR")
+    ])
+
+# Actually, I should probably do different things for branch/jump/call/ret...
