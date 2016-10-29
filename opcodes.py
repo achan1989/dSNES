@@ -1,270 +1,339 @@
 import collections
 
-from handlers import (
-    Implicit, DirectXIndirect, Illegal, Direct, Immediate, Accumulator,
-    Absolute, Relative, DirectIndirectY, DirectX, AbsoluteY, AbsoluteX,
-    Ret, JmpAbsolute, JmpAbsoluteIndirect, DirectY)
+import instruction
 
 
-InstrDesc = collections.namedtuple("InstrDesc",
-    ["mnemonic", "size", "handler_class"])
+def make_instruction_class(opcode, mnemonic, kind, operand_size):
+    classname = "{}_{}_0x{:02X}".format(mnemonic, kind, opcode)
+    return type(classname, (instruction.BaseInstruction,),
+        {
+        "_Opcode" : opcode,
+        "_Mnemonic" : mnemonic,
+        "_Kind" : kind,
+        "_Operand_size" : operand_size
+        })
+
+
+def Absolute(opcode, mnemonic):
+    operand_size = 2
+    return make_instruction_class(opcode, mnemonic, "Absolute", operand_size)
+
+def AbsoluteX(opcode, mnemonic):
+    operand_size = 2
+    return make_instruction_class(opcode, mnemonic, "AbsoluteX", operand_size)
+
+def AbsoluteY(opcode, mnemonic):
+    operand_size = 2
+    return make_instruction_class(opcode, mnemonic, "AbsoluteY", operand_size)
+
+def Accumulator(opcode, mnemonic):
+    operand_size = 0
+    return make_instruction_class(opcode, mnemonic, "Accumulator", operand_size)
+
+def Direct(opcode, mnemonic):
+    operand_size = 1
+    return make_instruction_class(opcode, mnemonic, "Direct", operand_size)
+
+def DirectIndirectY(opcode, mnemonic):
+    operand_size = 1
+    return make_instruction_class(opcode, mnemonic, "DirectIndirectY", operand_size)
+
+def DirectX(opcode, mnemonic):
+    operand_size = 1
+    return make_instruction_class(opcode, mnemonic, "DirectX", operand_size)
+
+def DirectXIndirect(opcode, mnemonic):
+    operand_size = 1
+    return make_instruction_class(opcode, mnemonic, "DirectXIndirect", operand_size)
+
+def DirectY(opcode, mnemonic):
+    operand_size = 1
+    return make_instruction_class(opcode, mnemonic, "DirectY", operand_size)
+
+def Illegal(opcode, mnemonic):
+    operand_size = 0
+    return make_instruction_class(opcode, mnemonic, "Illegal", operand_size)
+
+def Immediate(opcode, mnemonic):
+    operand_size = 1
+    return make_instruction_class(opcode, mnemonic, "Immediate", operand_size)
+
+def Implicit(opcode, mnemonic):
+    operand_size = 0
+    return make_instruction_class(opcode, mnemonic, "Implicit", operand_size)
+
+def JmpAbsolute(opcode, mnemonic):
+    operand_size = 2
+    return make_instruction_class(opcode, mnemonic, "JmpAbsolute", operand_size)
+
+def JmpAbsoluteIndirect(opcode, mnemonic):
+    operand_size = 2
+    return make_instruction_class(opcode, mnemonic, "JmpAbsoluteIndirect", operand_size)
+
+def Relative(opcode, mnemonic):
+    operand_size = 1
+    return make_instruction_class(opcode, mnemonic, "Relative", operand_size)
+
+def Ret(opcode, mnemonic):
+    operand_size = 0
+    return make_instruction_class(opcode, mnemonic, "Ret", operand_size)
 
 
 opcode_table = [
-    InstrDesc("BRK", 1, Implicit), # 0x00
-    InstrDesc("ORA", 2, DirectXIndirect), # 0x01
-    InstrDesc("???", 1, Illegal), # 0x02
-    InstrDesc("???", 1, Illegal), # 0x03
-    InstrDesc("???", 1, Illegal), # 0x04
-    InstrDesc("ORA", 2, Direct), # 0x05
-    InstrDesc("ASL", 2, Direct), # 0x06
-    InstrDesc("???", 1, Illegal), # 0x07
-    InstrDesc("PHP", 1, Implicit), # 0x08
-    InstrDesc("ORA", 2, Immediate), # 0x09
-    InstrDesc("ASL", 1, Accumulator), # 0x0a
-    InstrDesc("???", 1, Illegal), # 0x0b
-    InstrDesc("???", 1, Illegal), # 0x0c
-    InstrDesc("ORA", 3, Absolute), # 0x0d
-    InstrDesc("ASL", 3, Absolute), # 0x0e
-    InstrDesc("???", 1, Illegal), # 0x0f
-    InstrDesc("BPL", 2, Relative), # 0x10
-    InstrDesc("ORA", 2, DirectIndirectY), # 0x11
-    InstrDesc("???", 1, Illegal), # 0x12
-    InstrDesc("???", 1, Illegal), # 0x13
-    InstrDesc("???", 1, Illegal), # 0x14
-    InstrDesc("ORA", 2, DirectX), # 0x15
-    InstrDesc("ASL", 2, DirectX), # 0x16
-    InstrDesc("???", 1, Illegal), # 0x17
-    InstrDesc("CLC", 1, Implicit), # 0x18
-    InstrDesc("ORA", 3, AbsoluteY), # 0x19
-    InstrDesc("???", 1, Illegal), # 0x1a
-    InstrDesc("???", 1, Illegal), # 0x1b
-    InstrDesc("???", 1, Illegal), # 0x1c
-    InstrDesc("ORA", 3, AbsoluteX), # 0x1d
-    InstrDesc("ASL", 3, AbsoluteX), # 0x1e
-    InstrDesc("???", 1, Illegal), # 0x1f
-    InstrDesc("JSR", 3, Absolute), # 0x20
-    InstrDesc("AND", 2, DirectXIndirect), # 0x21
-    InstrDesc("???", 1, Illegal), # 0x22
-    InstrDesc("???", 1, Illegal), # 0x23
-    InstrDesc("BIT", 2, Direct), # 0x24
-    InstrDesc("AND", 2, Direct), # 0x25
-    InstrDesc("ROL", 2, Direct), # 0x26
-    InstrDesc("???", 1, Illegal), # 0x27
-    InstrDesc("PLP", 1, Implicit), # 0x28
-    InstrDesc("AND", 2, Immediate), # 0x29
-    InstrDesc("ROL", 1, Accumulator), # 0x2a
-    InstrDesc("???", 1, Illegal), # 0x2b
-    InstrDesc("BIT", 3, Absolute), # 0x2c
-    InstrDesc("AND", 3, Absolute), # 0x2d
-    InstrDesc("ROL", 3, Absolute), # 0x2e
-    InstrDesc("???", 1, Illegal), # 0x2f
-    InstrDesc("BMI", 2, Relative), # 0x30
-    InstrDesc("AND", 2, DirectIndirectY), # 0x31
-    InstrDesc("???", 1, Illegal), # 0x32
-    InstrDesc("???", 1, Illegal), # 0x33
-    InstrDesc("???", 1, Illegal), # 0x34
-    InstrDesc("AND", 2, DirectX), # 0x35
-    InstrDesc("ROL", 2, DirectX), # 0x36
-    InstrDesc("???", 1, Illegal), # 0x37
-    InstrDesc("SEC", 1, Implicit), # 0x38
-    InstrDesc("AND", 3, AbsoluteY), # 0x39
-    InstrDesc("???", 1, Illegal), # 0x3a
-    InstrDesc("???", 1, Illegal), # 0x3b
-    InstrDesc("???", 1, Illegal), # 0x3c
-    InstrDesc("AND", 3, AbsoluteX), # 0x3d
-    InstrDesc("ROL", 3, AbsoluteX), # 0x3e
-    InstrDesc("???", 1, Illegal), # 0x3f
-    InstrDesc("RTI", 1, Ret), # 0x40
-    InstrDesc("EOR", 2, DirectXIndirect), # 0x41
-    InstrDesc("???", 1, Illegal), # 0x42
-    InstrDesc("???", 1, Illegal), # 0x43
-    InstrDesc("???", 1, Illegal), # 0x44
-    InstrDesc("EOR", 2, Direct), # 0x45
-    InstrDesc("LSR", 2, Direct), # 0x46
-    InstrDesc("???", 1, Illegal), # 0x47
-    InstrDesc("PHA", 1, Implicit), # 0x48
-    InstrDesc("EOR", 2, Immediate), # 0x49
-    InstrDesc("LSR", 1, Accumulator), # 0x4a
-    InstrDesc("???", 1, Illegal), # 0x4b
-    InstrDesc("JMP", 3, JmpAbsolute), # 0x4c
-    InstrDesc("EOR", 3, Absolute), # 0x4d
-    InstrDesc("LSR", 3, Absolute), # 0x4e
-    InstrDesc("???", 1, Illegal), # 0x4f
-    InstrDesc("BVC", 2, Relative), # 0x50
-    InstrDesc("EOR", 2, DirectIndirectY), # 0x51
-    InstrDesc("???", 1, Illegal), # 0x52
-    InstrDesc("???", 1, Illegal), # 0x53
-    InstrDesc("???", 1, Illegal), # 0x54
-    InstrDesc("EOR", 2, DirectX), # 0x55
-    InstrDesc("LSR", 2, DirectX), # 0x56
-    InstrDesc("???", 1, Illegal), # 0x57
-    InstrDesc("CLI", 1, Implicit), # 0x58
-    InstrDesc("EOR", 3, AbsoluteY), # 0x59
-    InstrDesc("???", 1, Illegal), # 0x5a
-    InstrDesc("???", 1, Illegal), # 0x5b
-    InstrDesc("???", 1, Illegal), # 0x5c
-    InstrDesc("EOR", 3, AbsoluteX), # 0x5d
-    InstrDesc("LSR", 3, AbsoluteX), # 0x5e
-    InstrDesc("???", 1, Illegal), # 0x5f
-    InstrDesc("RTS", 1, Ret), # 0x60
-    InstrDesc("ADC", 2, DirectXIndirect), # 0x61
-    InstrDesc("???", 1, Illegal), # 0x62
-    InstrDesc("???", 1, Illegal), # 0x63
-    InstrDesc("???", 1, Illegal), # 0x64
-    InstrDesc("ADC", 2, Direct), # 0x65
-    InstrDesc("ROR", 2, Direct), # 0x66
-    InstrDesc("???", 1, Illegal), # 0x67
-    InstrDesc("PLA", 1, Implicit), # 0x68
-    InstrDesc("ADC", 2, Immediate), # 0x69
-    InstrDesc("ROR", 1, Accumulator), # 0x6a
-    InstrDesc("???", 1, Illegal), # 0x6b
-    InstrDesc("JMP", 3, JmpAbsoluteIndirect), # 0x6c
-    InstrDesc("ADC", 3, Absolute), # 0x6d
-    InstrDesc("ROR", 3, Absolute), # 0x6e
-    InstrDesc("???", 1, Illegal), # 0x6f
-    InstrDesc("BVS", 2, Relative), # 0x70
-    InstrDesc("ADC", 2, DirectIndirectY), # 0x71
-    InstrDesc("???", 1, Illegal), # 0x72
-    InstrDesc("???", 1, Illegal), # 0x73
-    InstrDesc("???", 1, Illegal), # 0x74
-    InstrDesc("ADC", 2, DirectX), # 0x75
-    InstrDesc("ROR", 2, DirectX), # 0x76
-    InstrDesc("???", 1, Illegal), # 0x77
-    InstrDesc("SEI", 1, Implicit), # 0x78
-    InstrDesc("ADC", 3, AbsoluteY), # 0x79
-    InstrDesc("???", 1, Illegal), # 0x7a
-    InstrDesc("???", 1, Illegal), # 0x7b
-    InstrDesc("???", 1, Illegal), # 0x7c
-    InstrDesc("ADC", 3, AbsoluteX), # 0x7d
-    InstrDesc("ROR", 3, AbsoluteX), # 0x7e
-    InstrDesc("???", 1, Illegal), # 0x7f
-    InstrDesc("???", 1, Illegal), # 0x80
-    InstrDesc("STA", 2, DirectXIndirect), # 0x81
-    InstrDesc("???", 1, Illegal), # 0x82
-    InstrDesc("???", 1, Illegal), # 0x83
-    InstrDesc("STY", 2, Direct), # 0x84
-    InstrDesc("STA", 2, Direct), # 0x85
-    InstrDesc("STX", 2, Direct), # 0x86
-    InstrDesc("???", 1, Illegal), # 0x87
-    InstrDesc("DEY", 1, Implicit), # 0x88
-    InstrDesc("???", 1, Illegal), # 0x89
-    InstrDesc("TXA", 1, Implicit), # 0x8a
-    InstrDesc("???", 1, Illegal), # 0x8b
-    InstrDesc("STY", 3, Absolute), # 0x8c
-    InstrDesc("STA", 3, Absolute), # 0x8d
-    InstrDesc("STX", 3, Absolute), # 0x8e
-    InstrDesc("???", 1, Illegal), # 0x8f
-    InstrDesc("BCC", 2, Relative), # 0x90
-    InstrDesc("STA", 2, DirectIndirectY), # 0x91
-    InstrDesc("???", 1, Illegal), # 0x92
-    InstrDesc("???", 1, Illegal), # 0x93
-    InstrDesc("STY", 2, DirectX), # 0x94
-    InstrDesc("STA", 2, DirectX), # 0x95
-    InstrDesc("STX", 2, DirectY), # 0x96
-    InstrDesc("???", 1, Illegal), # 0x97
-    InstrDesc("TYA", 1, Implicit), # 0x98
-    InstrDesc("STA", 3, AbsoluteY), # 0x99
-    InstrDesc("TXS", 1, Implicit), # 0x9a
-    InstrDesc("???", 1, Illegal), # 0x9b
-    InstrDesc("???", 1, Illegal), # 0x9c
-    InstrDesc("STA", 3, AbsoluteX), # 0x9d
-    InstrDesc("???", 1, Illegal), # 0x9e
-    InstrDesc("???", 1, Illegal), # 0x9f
-    InstrDesc("LDY", 2, Immediate), # 0xa0
-    InstrDesc("LDA", 2, DirectXIndirect), # 0xa1
-    InstrDesc("LDX", 2, Immediate), # 0xa2
-    InstrDesc("???", 1, Illegal), # 0xa3
-    InstrDesc("LDY", 2, Direct), # 0xa4
-    InstrDesc("LDA", 2, Direct), # 0xa5
-    InstrDesc("LDX", 2, Direct), # 0xa6
-    InstrDesc("???", 1, Illegal), # 0xa7
-    InstrDesc("TAY", 1, Implicit), # 0xa8
-    InstrDesc("LDA", 2, Immediate), # 0xa9
-    InstrDesc("TAX", 1, Implicit), # 0xaa
-    InstrDesc("???", 1, Illegal), # 0xab
-    InstrDesc("LDY", 3, Absolute), # 0xac
-    InstrDesc("LDA", 3, Absolute), # 0xad
-    InstrDesc("LDX", 3, Absolute), # 0xae
-    InstrDesc("???", 1, Illegal), # 0xaf
-    InstrDesc("BCS", 2, Relative), # 0xb0
-    InstrDesc("LDA", 2, DirectIndirectY), # 0xb1
-    InstrDesc("???", 1, Illegal), # 0xb2
-    InstrDesc("???", 1, Illegal), # 0xb3
-    InstrDesc("LDY", 2, DirectX), # 0xb4
-    InstrDesc("LDA", 2, DirectX), # 0xb5
-    InstrDesc("LDX", 2, DirectY), # 0xb6
-    InstrDesc("???", 1, Illegal), # 0xb7
-    InstrDesc("CLV", 1, Implicit), # 0xb8
-    InstrDesc("LDA", 3, AbsoluteY), # 0xb9
-    InstrDesc("TSX", 1, Implicit), # 0xba
-    InstrDesc("???", 1, Illegal), # 0xbb
-    InstrDesc("LDY", 3, AbsoluteX), # 0xbc
-    InstrDesc("LDA", 3, AbsoluteX), # 0xbd
-    InstrDesc("LDX", 3, AbsoluteY), # 0xbe
-    InstrDesc("???", 1, Illegal), # 0xbf
-    InstrDesc("CPY", 2, Immediate), # 0xc0
-    InstrDesc("CMP", 2, DirectXIndirect), # 0xc1
-    InstrDesc("???", 1, Illegal), # 0xc2
-    InstrDesc("???", 1, Illegal), # 0xc3
-    InstrDesc("CPY", 2, Direct), # 0xc4
-    InstrDesc("CMP", 2, Direct), # 0xc5
-    InstrDesc("DEC", 2, Direct), # 0xc6
-    InstrDesc("???", 1, Illegal), # 0xc7
-    InstrDesc("INY", 1, Implicit), # 0xc8
-    InstrDesc("CMP", 2, Immediate), # 0xc9
-    InstrDesc("DEX", 1, Implicit), # 0xca
-    InstrDesc("???", 1, Illegal), # 0xcb
-    InstrDesc("CPY", 3, Absolute), # 0xcc
-    InstrDesc("CMP", 3, Absolute), # 0xcd
-    InstrDesc("DEC", 3, Absolute), # 0xce
-    InstrDesc("???", 1, Illegal), # 0xcf
-    InstrDesc("BNE", 2, Relative), # 0xd0
-    InstrDesc("CMP", 2, DirectIndirectY), # 0xd1
-    InstrDesc("???", 1, Illegal), # 0xd2
-    InstrDesc("???", 1, Illegal), # 0xd3
-    InstrDesc("???", 1, Illegal), # 0xd4
-    InstrDesc("CMP", 2, DirectX), # 0xd5
-    InstrDesc("DEC", 2, DirectX), # 0xd6
-    InstrDesc("???", 1, Illegal), # 0xd7
-    InstrDesc("CLD", 1, Implicit), # 0xd8
-    InstrDesc("CMP", 3, AbsoluteY), # 0xd9
-    InstrDesc("???", 1, Illegal), # 0xda
-    InstrDesc("???", 1, Illegal), # 0xdb
-    InstrDesc("???", 1, Illegal), # 0xdc
-    InstrDesc("CMP", 3, AbsoluteX), # 0xdd
-    InstrDesc("DEC", 3, AbsoluteX), # 0xde
-    InstrDesc("???", 1, Illegal), # 0xdf
-    InstrDesc("CPX", 2, Immediate), # 0xe0
-    InstrDesc("SBC", 2, DirectXIndirect), # 0xe1
-    InstrDesc("???", 1, Illegal), # 0xe2
-    InstrDesc("???", 1, Illegal), # 0xe3
-    InstrDesc("CPX", 2, Direct), # 0xe4
-    InstrDesc("SBC", 2, Direct), # 0xe5
-    InstrDesc("INC", 2, Direct), # 0xe6
-    InstrDesc("???", 1, Illegal), # 0xe7
-    InstrDesc("INX", 1, Implicit), # 0xe8
-    InstrDesc("SBC", 2, Immediate), # 0xe9
-    InstrDesc("NOP", 1, Implicit), # 0xea
-    InstrDesc("???", 1, Illegal), # 0xeb
-    InstrDesc("CPX", 3, Absolute), # 0xec
-    InstrDesc("SBC", 3, Absolute), # 0xed
-    InstrDesc("INC", 3, Absolute), # 0xee
-    InstrDesc("???", 1, Illegal), # 0xef
-    InstrDesc("BEQ", 2, Relative), # 0xf0
-    InstrDesc("SBC", 2, DirectIndirectY), # 0xf1
-    InstrDesc("???", 1, Illegal), # 0xf2
-    InstrDesc("???", 1, Illegal), # 0xf3
-    InstrDesc("???", 1, Illegal), # 0xf4
-    InstrDesc("SBC", 2, DirectX), # 0xf5
-    InstrDesc("INC", 2, DirectX), # 0xf6
-    InstrDesc("???", 1, Illegal), # 0xf7
-    InstrDesc("SED", 1, Implicit), # 0xf8
-    InstrDesc("SBC", 3, AbsoluteY), # 0xf9
-    InstrDesc("???", 1, Illegal), # 0xfa
-    InstrDesc("???", 1, Illegal), # 0xfb
-    InstrDesc("???", 1, Illegal), # 0xfc
-    InstrDesc("SBC", 3, AbsoluteX), # 0xfd
-    InstrDesc("INC", 3, AbsoluteX), # 0xfe
-    InstrDesc("???", 1, Illegal) # 0xff
+    Implicit(0x00, "BRK"),
+    DirectXIndirect(0x01, "ORA"),
+    Illegal(0x02, "???"),
+    Illegal(0x03, "???"),
+    Illegal(0x04, "???"),
+    Direct(0x05, "ORA"),
+    Direct(0x06, "ASL"),
+    Illegal(0x07, "???"),
+    Implicit(0x08, "PHP"),
+    Immediate(0x09, "ORA"),
+    Accumulator(0x0a, "ASL"),
+    Illegal(0x0b, "???"),
+    Illegal(0x0c, "???"),
+    Absolute(0x0d, "ORA"),
+    Absolute(0x0e, "ASL"),
+    Illegal(0x0f, "???"),
+    Relative(0x10, "BPL"),
+    DirectIndirectY(0x11, "ORA"),
+    Illegal(0x12, "???"),
+    Illegal(0x13, "???"),
+    Illegal(0x14, "???"),
+    DirectX(0x15, "ORA"),
+    DirectX(0x16, "ASL"),
+    Illegal(0x17, "???"),
+    Implicit(0x18, "CLC"),
+    AbsoluteY(0x19, "ORA"),
+    Illegal(0x1a, "???"),
+    Illegal(0x1b, "???"),
+    Illegal(0x1c, "???"),
+    AbsoluteX(0x1d, "ORA"),
+    AbsoluteX(0x1e, "ASL"),
+    Illegal(0x1f, "???"),
+    Absolute(0x20, "JSR"),
+    DirectXIndirect(0x21, "AND"),
+    Illegal(0x22, "???"),
+    Illegal(0x23, "???"),
+    Direct(0x24, "BIT"),
+    Direct(0x25, "AND"),
+    Direct(0x26, "ROL"),
+    Illegal(0x27, "???"),
+    Implicit(0x28, "PLP"),
+    Immediate(0x29, "AND"),
+    Accumulator(0x2a, "ROL"),
+    Illegal(0x2b, "???"),
+    Absolute(0x2c, "BIT"),
+    Absolute(0x2d, "AND"),
+    Absolute(0x2e, "ROL"),
+    Illegal(0x2f, "???"),
+    Relative(0x30, "BMI"),
+    DirectIndirectY(0x31, "AND"),
+    Illegal(0x32, "???"),
+    Illegal(0x33, "???"),
+    Illegal(0x34, "???"),
+    DirectX(0x35, "AND"),
+    DirectX(0x36, "ROL"),
+    Illegal(0x37, "???"),
+    Implicit(0x38, "SEC"),
+    AbsoluteY(0x39, "AND"),
+    Illegal(0x3a, "???"),
+    Illegal(0x3b, "???"),
+    Illegal(0x3c, "???"),
+    AbsoluteX(0x3d, "AND"),
+    AbsoluteX(0x3e, "ROL"),
+    Illegal(0x3f, "???"),
+    Ret(0x40, "RTI"),
+    DirectXIndirect(0x41, "EOR"),
+    Illegal(0x42, "???"),
+    Illegal(0x43, "???"),
+    Illegal(0x44, "???"),
+    Direct(0x45, "EOR"),
+    Direct(0x46, "LSR"),
+    Illegal(0x47, "???"),
+    Implicit(0x48, "PHA"),
+    Immediate(0x49, "EOR"),
+    Accumulator(0x4a, "LSR"),
+    Illegal(0x4b, "???"),
+    JmpAbsolute(0x4c, "JMP"),
+    Absolute(0x4d, "EOR"),
+    Absolute(0x4e, "LSR"),
+    Illegal(0x4f, "???"),
+    Relative(0x50, "BVC"),
+    DirectIndirectY(0x51, "EOR"),
+    Illegal(0x52, "???"),
+    Illegal(0x53, "???"),
+    Illegal(0x54, "???"),
+    DirectX(0x55, "EOR"),
+    DirectX(0x56, "LSR"),
+    Illegal(0x57, "???"),
+    Implicit(0x58, "CLI"),
+    AbsoluteY(0x59, "EOR"),
+    Illegal(0x5a, "???"),
+    Illegal(0x5b, "???"),
+    Illegal(0x5c, "???"),
+    AbsoluteX(0x5d, "EOR"),
+    AbsoluteX(0x5e, "LSR"),
+    Illegal(0x5f, "???"),
+    Ret(0x60, "RTS"),
+    DirectXIndirect(0x61, "ADC"),
+    Illegal(0x62, "???"),
+    Illegal(0x63, "???"),
+    Illegal(0x64, "???"),
+    Direct(0x65, "ADC"),
+    Direct(0x66, "ROR"),
+    Illegal(0x67, "???"),
+    Implicit(0x68, "PLA"),
+    Immediate(0x69, "ADC"),
+    Accumulator(0x6a, "ROR"),
+    Illegal(0x6b, "???"),
+    JmpAbsoluteIndirect(0x6c, "JMP"),
+    Absolute(0x6d, "ADC"),
+    Absolute(0x6e, "ROR"),
+    Illegal(0x6f, "???"),
+    Relative(0x70, "BVS"),
+    DirectIndirectY(0x71, "ADC"),
+    Illegal(0x72, "???"),
+    Illegal(0x73, "???"),
+    Illegal(0x74, "???"),
+    DirectX(0x75, "ADC"),
+    DirectX(0x76, "ROR"),
+    Illegal(0x77, "???"),
+    Implicit(0x78, "SEI"),
+    AbsoluteY(0x79, "ADC"),
+    Illegal(0x7a, "???"),
+    Illegal(0x7b, "???"),
+    Illegal(0x7c, "???"),
+    AbsoluteX(0x7d, "ADC"),
+    AbsoluteX(0x7e, "ROR"),
+    Illegal(0x7f, "???"),
+    Illegal(0x80, "???"),
+    DirectXIndirect(0x81, "STA"),
+    Illegal(0x82, "???"),
+    Illegal(0x83, "???"),
+    Direct(0x84, "STY"),
+    Direct(0x85, "STA"),
+    Direct(0x86, "STX"),
+    Illegal(0x87, "???"),
+    Implicit(0x88, "DEY"),
+    Illegal(0x89, "???"),
+    Implicit(0x8a, "TXA"),
+    Illegal(0x8b, "???"),
+    Absolute(0x8c, "STY"),
+    Absolute(0x8d, "STA"),
+    Absolute(0x8e, "STX"),
+    Illegal(0x8f, "???"),
+    Relative(0x90, "BCC"),
+    DirectIndirectY(0x91, "STA"),
+    Illegal(0x92, "???"),
+    Illegal(0x93, "???"),
+    DirectX(0x94, "STY"),
+    DirectX(0x95, "STA"),
+    DirectY(0x96, "STX"),
+    Illegal(0x97, "???"),
+    Implicit(0x98, "TYA"),
+    AbsoluteY(0x99, "STA"),
+    Implicit(0x9a, "TXS"),
+    Illegal(0x9b, "???"),
+    Illegal(0x9c, "???"),
+    AbsoluteX(0x9d, "STA"),
+    Illegal(0x9e, "???"),
+    Illegal(0x9f, "???"),
+    Immediate(0xa0, "LDY"),
+    DirectXIndirect(0xa1, "LDA"),
+    Immediate(0xa2, "LDX"),
+    Illegal(0xa3, "???"),
+    Direct(0xa4, "LDY"),
+    Direct(0xa5, "LDA"),
+    Direct(0xa6, "LDX"),
+    Illegal(0xa7, "???"),
+    Implicit(0xa8, "TAY"),
+    Immediate(0xa9, "LDA"),
+    Implicit(0xaa, "TAX"),
+    Illegal(0xab, "???"),
+    Absolute(0xac, "LDY"),
+    Absolute(0xad, "LDA"),
+    Absolute(0xae, "LDX"),
+    Illegal(0xaf, "???"),
+    Relative(0xb0, "BCS"),
+    DirectIndirectY(0xb1, "LDA"),
+    Illegal(0xb2, "???"),
+    Illegal(0xb3, "???"),
+    DirectX(0xb4, "LDY"),
+    DirectX(0xb5, "LDA"),
+    DirectY(0xb6, "LDX"),
+    Illegal(0xb7, "???"),
+    Implicit(0xb8, "CLV"),
+    AbsoluteY(0xb9, "LDA"),
+    Implicit(0xba, "TSX"),
+    Illegal(0xbb, "???"),
+    AbsoluteX(0xbc, "LDY"),
+    AbsoluteX(0xbd, "LDA"),
+    AbsoluteY(0xbe, "LDX"),
+    Illegal(0xbf, "???"),
+    Immediate(0xc0, "CPY"),
+    DirectXIndirect(0xc1, "CMP"),
+    Illegal(0xc2, "???"),
+    Illegal(0xc3, "???"),
+    Direct(0xc4, "CPY"),
+    Direct(0xc5, "CMP"),
+    Direct(0xc6, "DEC"),
+    Illegal(0xc7, "???"),
+    Implicit(0xc8, "INY"),
+    Immediate(0xc9, "CMP"),
+    Implicit(0xca, "DEX"),
+    Illegal(0xcb, "???"),
+    Absolute(0xcc, "CPY"),
+    Absolute(0xcd, "CMP"),
+    Absolute(0xce, "DEC"),
+    Illegal(0xcf, "???"),
+    Relative(0xd0, "BNE"),
+    DirectIndirectY(0xd1, "CMP"),
+    Illegal(0xd2, "???"),
+    Illegal(0xd3, "???"),
+    Illegal(0xd4, "???"),
+    DirectX(0xd5, "CMP"),
+    DirectX(0xd6, "DEC"),
+    Illegal(0xd7, "???"),
+    Implicit(0xd8, "CLD"),
+    AbsoluteY(0xd9, "CMP"),
+    Illegal(0xda, "???"),
+    Illegal(0xdb, "???"),
+    Illegal(0xdc, "???"),
+    AbsoluteX(0xdd, "CMP"),
+    AbsoluteX(0xde, "DEC"),
+    Illegal(0xdf, "???"),
+    Immediate(0xe0, "CPX"),
+    DirectXIndirect(0xe1, "SBC"),
+    Illegal(0xe2, "???"),
+    Illegal(0xe3, "???"),
+    Direct(0xe4, "CPX"),
+    Direct(0xe5, "SBC"),
+    Direct(0xe6, "INC"),
+    Illegal(0xe7, "???"),
+    Implicit(0xe8, "INX"),
+    Immediate(0xe9, "SBC"),
+    Implicit(0xea, "NOP"),
+    Illegal(0xeb, "???"),
+    Absolute(0xec, "CPX"),
+    Absolute(0xed, "SBC"),
+    Absolute(0xee, "INC"),
+    Illegal(0xef, "???"),
+    Relative(0xf0, "BEQ"),
+    DirectIndirectY(0xf1, "SBC"),
+    Illegal(0xf2, "???"),
+    Illegal(0xf3, "???"),
+    Illegal(0xf4, "???"),
+    DirectX(0xf5, "SBC"),
+    DirectX(0xf6, "INC"),
+    Illegal(0xf7, "???"),
+    Implicit(0xf8, "SED"),
+    AbsoluteY(0xf9, "SBC"),
+    Illegal(0xfa, "???"),
+    Illegal(0xfb, "???"),
+    Illegal(0xfc, "???"),
+    AbsoluteX(0xfd, "SBC"),
+    AbsoluteX(0xfe, "INC"),
+    Illegal(0xff, "???")
 ]

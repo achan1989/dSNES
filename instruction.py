@@ -1,16 +1,40 @@
-class Instruction():
-    def __init__(self, address, instr_desc, operands):
-        self.address = address
-        self.instr_desc = instr_desc
-        self.operands = operands
+class BaseInstruction():
+    # The following class variables will be available (will be set by child
+    # classes, access as self._Blah):
+    # _Opcode
+    # _Mnemonic
+    # _Kind
+    # _Operand_size
+
+    def __init__(self, mem, address):
+        self._address = address
+        self._operands = self._get_operands(mem)
+
+    def _get_operands(self, mem):
+        """ Get the operands for this instruction. """
+        address = self._address
+        num_operands = self._Operand_size
+        operands = tuple()
+
+        while num_operands > 0:
+            address += 1
+            operands += (mem[address],)
+            num_operands -= 1
+        return operands
 
     @property
     def assembly_string(self):
-        mnemonic = self.instr_desc.mnemonic
-        operands = "todo..."
-        #operands = self.instr_desc.handler_class(self.operands).operands_string
-        return " ".join((mnemonic, operands))
+        operands = "[{} operand bytes todo]".format(self._Operand_size)
+        return " ".join((self._Mnemonic, operands))
 
     @property
     def size(self):
-        return self.instr_desc.size
+        return 1 + self._Operand_size
+
+    @property
+    def operands(self):
+        return self._operands
+
+    @property
+    def address(self):
+        return self._address
