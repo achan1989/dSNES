@@ -1,5 +1,6 @@
 import opcodes
 import dasm_objects
+from util import dw_to_uint, tc_to_int
 
 
 def disassemble_instruction(mem, address):
@@ -65,17 +66,3 @@ def get_jump_target(instruction):
         return dasm_objects.UNKNOWN_JUMP_TARGET
 
     raise Exception("Instruction {} is not a jump".format(instruction))
-
-def dw_to_uint(dw):
-    assert len(dw) == 2
-    lsb, msb = dw
-    return (msb << 8) | lsb
-
-def tc_to_int(value):
-    """ Convert an 8-bit word of 2's complement into an int. """
-    # Python has interpreted the value as an unsigned int.
-    assert 0 <= value <= 0xFF
-    sign = (value & (1 << 7))
-    if sign != 0:
-        value -= (1 << 8)
-    return value
