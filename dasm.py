@@ -48,7 +48,7 @@ def find_and_label_entry_points(program):
     for label, v in vectors:
         address = read_dword(program.mem, v)
         program.entry_points.add(address)
-        program.labels[address] = label
+        program.labels.add(address, label)
 
 def read_dword(mem, address):
     """ Read a 2-byte dword, little-endian, at the given address. """
