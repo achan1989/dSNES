@@ -14,6 +14,9 @@ class BaseInstruction():
         self._address = address
         self._operands = self._get_operands(mem)
 
+    def __str__(self):
+        return "{}@0x{:04X}".format(self.mnemonic, self.address)
+
     def _get_operands(self, mem):
         """ Get the operands for this instruction. """
         address = self._address
@@ -27,9 +30,16 @@ class BaseInstruction():
         return operands
 
     @property
-    def assembly_string(self):
-        operands = "[{} operand bytes todo]".format(self._Operand_size)
-        return " ".join((self._Mnemonic, operands))
+    def opcode(self):
+        return self._Opcode
+
+    @property
+    def mnemonic(self):
+        return self._Mnemonic
+
+    @property
+    def category(self):
+        return self._Category
 
     @property
     def size(self):
@@ -42,6 +52,27 @@ class BaseInstruction():
     @property
     def address(self):
         return self._address
+
+    @property
+    def assembly_string(self):
+        operands = "[{} operand bytes todo]".format(self._Operand_size)
+        return " ".join((self._Mnemonic, operands))
+
+    @property
+    def is_conditional_jump(self):
+        return type(self) in conditional_jump_classes
+
+    @property
+    def is_unconditional_jump(self):
+        return type(self) in unconditional_jump_classes
+
+    @property
+    def is_function_call(self):
+        return type(self) in function_call_classes
+
+    @property
+    def is_function_return(self):
+        return type(self) in function_return_classes
 
 
 category = types.SimpleNamespace(
@@ -173,7 +204,7 @@ opcode_table = [
     AbsoluteX(0x1d, "ORA"),
     AbsoluteX(0x1e, "ASL"),
     Illegal(0x1f, "???"),
-    Absolute(0x20, "JSR"),
+    JmpAbsolute(0x20, "JSR"),
     DirectXIndirect(0x21, "AND"),
     Illegal(0x22, "???"),
     Illegal(0x23, "???"),
@@ -400,7 +431,7 @@ opcode_table = [
 ]
 
 
-def find_instruction(mnemonic=None, category=None):
+def find_instructions(mnemonic=None, category=None):
     """
     Find instructions by mnemonic and/or category.
     """
@@ -417,8 +448,8 @@ def find_instruction(mnemonic=None, category=None):
     return found
 
 def find_unique_instruction(mnemonic=None, category=None):
-    found = find_instruction(mnemonic, category)
-    assert len(found) == 1
+    found = find_instructions(mnemonic, category)
+    assert len(found) == 1, "Expected one result, got {}".format(found)
     return found[0]
 
 
@@ -434,7 +465,11 @@ conditional_jump_classes = frozenset([
     ])
 
 unconditional_jump_classes = frozenset([
-    find_unique_instruction("JMP"),
+    find_unique_instruction("JMP", category.JmpAbsolute),
+    find_unique_instruction("JMP", category.JmpAbsoluteIndirect),
+    ])
+
+function_call_classes = frozenset([
     find_unique_instruction("JSR")
     ])
 
