@@ -438,4 +438,7 @@ unconditional_jump_classes = frozenset([
     find_unique_instruction("JSR")
     ])
 
-# Actually, I should probably do different things for branch/jump/call/ret...
+function_return_classes = frozenset([
+    find_unique_instruction("RTI"),
+    find_unique_instruction("RTS")
+    ])
