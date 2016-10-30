@@ -96,7 +96,8 @@ category = types.SimpleNamespace(
     )
 
 
-def make_instruction_class(opcode, mnemonic, category, operand_size, operand_string):
+def make_instruction_class(opcode, mnemonic, category,
+        operand_size, operand_string):
     classname = "{}_{}_0x{:02X}".format(mnemonic, category, opcode)
     return type(classname, (BaseInstruction,),
         {
@@ -203,7 +204,8 @@ def JmpAbsoluteIndirect(opcode, mnemonic):
     operand_size = 2
     def operand_string(self):
         return "(${:04X})".format(dw_to_uint(self.operands))
-    return make_instruction_class(opcode, mnemonic, category.JmpAbsoluteIndirect,
+    return make_instruction_class(opcode, mnemonic,
+        category.JmpAbsoluteIndirect,
         operand_size, operand_string)
 
 def Relative(opcode, mnemonic):

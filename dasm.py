@@ -27,7 +27,8 @@ def disassemble_chunk(program, start_address):
         if instruction.category == opcodes.category.Illegal:
             chunk.print_instructions()
             import pdb; pdb.set_trace()
-            raise Exception("Tried to disassemble illegal instruction {}".format(instruction))
+            raise Exception("Tried to disassemble illegal "
+                "instruction {}".format(instruction))
         chunk.add_instruction(instruction)
         address += instruction.size
 
@@ -49,7 +50,7 @@ def find_and_label_entry_points(program):
     vectors = (
         ("NMI", 0xFFFA),
         ("RESET", 0xFFFC),
-        # ("IRQ", 0xFFFE) The IRQ vector is unused (and points to data not code).
+        # ("IRQ", 0xFFFE) The IRQ vector is unused (points to data not code).
         )
     for label, v in vectors:
         address = read_dword(program.mem, v)

@@ -43,4 +43,5 @@ class Chunk():
     def print_instructions(self):
         print("Chunk at 0x{addr:04X}:".format(addr=self.start_address))
         for inst in self.instructions:
-            print("0x{addr:04X}    {asm}".format(addr=inst.address, asm=inst.assembly_string))
+            print("0x{addr:04X}    {asm}".format(
+                addr=inst.address, asm=inst.assembly_string))
