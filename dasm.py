@@ -32,9 +32,15 @@ def disassemble_chunk(program, start_address):
         address += instruction.size
 
         if instruction.is_conditional_jump or instruction.is_function_call:
-            chunk.add_exit_point(instruction.address, get_jump_target(instruction))
+            chunk.add_and_label_exit_point(
+                instruction.address,
+                get_jump_target(instruction),
+                program.labels)
         if instruction.is_unconditional_jump or instruction.is_function_return:
-            chunk.add_exit_point(instruction.address, get_jump_target(instruction))
+            chunk.add_and_label_exit_point(
+                instruction.address,
+                get_jump_target(instruction),
+                program.labels)
             break
 
     program.chunks.add(chunk)

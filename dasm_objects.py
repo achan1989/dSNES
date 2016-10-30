@@ -30,8 +30,15 @@ class Chunk():
     def add_instruction(self, instruction):
         self.instructions.append(instruction)
 
-    def add_exit_point(self, address, target):
+    def add_and_label_exit_point(self, address, target, labels):
         self.exit_points.add((address, target))
+
+        if target not in (UNKNOWN_JUMP_TARGET, RETURN_TO_CALLER):
+            try:
+                labels.add_generic(target)
+            except labelset.TargetRelabelException:
+                # If the target already has a label that's ok.
+                pass
 
     def print_instructions(self):
         print("Chunk at 0x{addr:04X}:".format(addr=self.start_address))
