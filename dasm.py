@@ -59,7 +59,8 @@ def get_jump_target(instruction):
         # All conditional jumps are relative.
         assert len(instruction.operands) == 1
         operand = instruction.operands[0]
-        return instruction.address + tc_to_int(operand)
+        # They are relative to the end of the instruction, not the start.
+        return instruction.address + 2 + tc_to_int(operand)
 
     if instruction.is_unconditional_jump or instruction.is_function_call:
         if instruction.category == opcodes.category.JmpAbsolute:
