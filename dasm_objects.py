@@ -1,3 +1,6 @@
+UNKNOWN_JUMP_TARGET = None
+
+
 class Program():
     def __init__(self, memory):
         self.mem = memory
@@ -18,3 +21,10 @@ class Chunk():
         self.start_address = start_address
         self.entry_points = set((start_address,))
         self.exit_points = set()
+        self.instructions = []
+
+    def add_instruction(self, instruction):
+        self.instructions.append(instruction)
+
+    def add_exit_point(self, address, target):
+        self.exit_points.add((address, target))
