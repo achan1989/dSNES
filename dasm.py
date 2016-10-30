@@ -24,6 +24,10 @@ def disassemble_chunk(program, start_address):
     address = start_address
     while True:
         instruction = disassemble_instruction(program.mem, address)
+        if instruction.category == opcodes.category.Illegal:
+            chunk.print_instructions()
+            import pdb; pdb.set_trace()
+            raise Exception("Tried to disassemble illegal instruction {}".format(instruction))
         chunk.add_instruction(instruction)
         address += instruction.size
 
