@@ -30,6 +30,7 @@ def disassemble_program():
 
     program = dasm_objects.Program(mem)
     dasm.disassemble_program(program)
+    return program
 
 
 if __name__ == "__main__":

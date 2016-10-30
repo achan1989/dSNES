@@ -37,6 +37,8 @@ def disassemble_chunk(program, start_address):
             chunk.add_exit_point(instruction.address, get_jump_target(instruction))
             break
 
+    program.chunks.add(chunk)
+
 def find_and_label_entry_points(program):
     vectors = (
         ("NMI", 0xFFFA),
@@ -66,9 +68,11 @@ def get_jump_target(instruction):
         if instruction.category == opcodes.category.JmpAbsolute:
             return dw_to_uint(instruction.operands)
         if instruction.category == opcodes.category.JmpAbsoluteIndirect:
+            assert len(instruction.operands) == 2
             return dasm_objects.UNKNOWN_JUMP_TARGET
 
     if instruction.is_function_return:
+        assert len(instruction.operands) == 0
         return dasm_objects.UNKNOWN_JUMP_TARGET
 
     raise Exception("Instruction {} is not a jump".format(instruction))
