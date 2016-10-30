@@ -41,7 +41,8 @@ def find_and_label_entry_points(program):
     vectors = (
         ("NMI", 0xFFFA),
         ("RESET", 0xFFFC),
-        ("IRQ", 0xFFFE))
+        # ("IRQ", 0xFFFE) The IRQ vector is unused (and points to data not code).
+        )
     for label, v in vectors:
         address = read_dword(program.mem, v)
         program.entry_points.add(address)
