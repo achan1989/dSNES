@@ -1,6 +1,8 @@
 import collections
 import types
 
+from util import dw_to_uint, tc_to_int
+
 
 class BaseInstruction():
     # The following class variables will be available (will be set by child
@@ -55,8 +57,7 @@ class BaseInstruction():
 
     @property
     def assembly_string(self):
-        operands = "[{} operand bytes todo]".format(self._Operand_size)
-        return " ".join((self._Mnemonic, operands))
+        return " ".join((self._Mnemonic, self._operand_string))
 
     @property
     def is_conditional_jump(self):
@@ -95,80 +96,131 @@ category = types.SimpleNamespace(
     )
 
 
-def make_instruction_class(opcode, mnemonic, category, operand_size):
+def make_instruction_class(opcode, mnemonic, category, operand_size, operand_string):
     classname = "{}_{}_0x{:02X}".format(mnemonic, category, opcode)
     return type(classname, (BaseInstruction,),
         {
         "_Opcode" : opcode,
         "_Mnemonic" : mnemonic,
         "_Category" : category,
-        "_Operand_size" : operand_size
+        "_Operand_size" : operand_size,
+        "_operand_string" : property(operand_string)
         })
 
 
 def Absolute(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, category.Absolute, operand_size)
+    def operand_string(self):
+        return "${:04X}".format(dw_to_uint(self.operands))
+    return make_instruction_class(opcode, mnemonic, category.Absolute,
+        operand_size, operand_string)
 
 def AbsoluteX(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, category.AbsoluteX, operand_size)
+    def operand_string(self):
+        return "${:04X},X".format(dw_to_uint(self.operands))
+    return make_instruction_class(opcode, mnemonic, category.AbsoluteX,
+        operand_size, operand_string)
 
 def AbsoluteY(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, category.AbsoluteY, operand_size)
+    def operand_string(self):
+        return "${:04X},Y".format(dw_to_uint(self.operands))
+    return make_instruction_class(opcode, mnemonic, category.AbsoluteY,
+        operand_size, operand_string)
 
 def Accumulator(opcode, mnemonic):
     operand_size = 0
-    return make_instruction_class(opcode, mnemonic, category.Accumulator, operand_size)
+    def operand_string(self):
+        return "A"
+    return make_instruction_class(opcode, mnemonic, category.Accumulator,
+        operand_size, operand_string)
 
 def Direct(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, category.Direct, operand_size)
+    def operand_string(self):
+        return "${:02X}".format(self.operands[0])
+    return make_instruction_class(opcode, mnemonic, category.Direct,
+        operand_size, operand_string)
 
 def DirectIndirectY(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, category.DirectIndirectY, operand_size)
+    def operand_string(self):
+        return "(${:02X}),Y".format(self.operands[0])
+    return make_instruction_class(opcode, mnemonic, category.DirectIndirectY, 
+        operand_size, operand_string)
 
 def DirectX(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, category.DirectX, operand_size)
+    def operand_string(self):
+        return "${:02X},X".format(self.operands[0])
+    return make_instruction_class(opcode, mnemonic, category.DirectX,
+        operand_size, operand_string)
 
 def DirectXIndirect(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, category.DirectXIndirect, operand_size)
+    def operand_string(self):
+        return "(${:02X},X)".format(self.operands[0])
+    return make_instruction_class(opcode, mnemonic, category.DirectXIndirect,
+        operand_size, operand_string)
 
 def DirectY(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, category.DirectY, operand_size)
+    def operand_string(self):
+        return "${:02X},Y".format(self.operands[0])
+    return make_instruction_class(opcode, mnemonic, category.DirectY,
+        operand_size, operand_string)
 
 def Illegal(opcode, mnemonic):
     operand_size = 0
-    return make_instruction_class(opcode, mnemonic, category.Illegal, operand_size)
+    def operand_string(self):
+        return "???"
+    return make_instruction_class(opcode, mnemonic, category.Illegal,
+        operand_size, operand_string)
 
 def Immediate(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, category.Immediate, operand_size)
+    def operand_string(self):
+        return "#${:02X}".format(self.operands[0])
+    return make_instruction_class(opcode, mnemonic, category.Immediate,
+        operand_size, operand_string)
 
 def Implicit(opcode, mnemonic):
     operand_size = 0
-    return make_instruction_class(opcode, mnemonic, category.Implicit, operand_size)
+    def operand_string(self):
+        return ""
+    return make_instruction_class(opcode, mnemonic, category.Implicit,
+        operand_size, operand_string)
 
 def JmpAbsolute(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, category.JmpAbsolute, operand_size)
+    def operand_string(self):
+        return "${:04X}".format(dw_to_uint(self.operands))
+    return make_instruction_class(opcode, mnemonic, category.JmpAbsolute,
+        operand_size, operand_string)
 
 def JmpAbsoluteIndirect(opcode, mnemonic):
     operand_size = 2
-    return make_instruction_class(opcode, mnemonic, category.JmpAbsoluteIndirect, operand_size)
+    def operand_string(self):
+        return "(${:04X})".format(dw_to_uint(self.operands))
+    return make_instruction_class(opcode, mnemonic, category.JmpAbsoluteIndirect,
+        operand_size, operand_string)
 
 def Relative(opcode, mnemonic):
     operand_size = 1
-    return make_instruction_class(opcode, mnemonic, category.Relative, operand_size)
+    def operand_string(self):
+        value = tc_to_int(self.operands[0])
+        sign = "+" if value >= 0 else "-"
+        return "{}${:02X}".format(sign, value)
+    return make_instruction_class(opcode, mnemonic, category.Relative,
+        operand_size, operand_string)
 
 def Ret(opcode, mnemonic):
     operand_size = 0
-    return make_instruction_class(opcode, mnemonic, category.Ret, operand_size)
+    def operand_string(self):
+        return ""
+    return make_instruction_class(opcode, mnemonic, category.Ret,
+        operand_size, operand_string)
 
 
 opcode_table = [
