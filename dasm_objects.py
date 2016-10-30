@@ -1,7 +1,8 @@
 import labelset
 
 
-UNKNOWN_JUMP_TARGET = None
+UNKNOWN_JUMP_TARGET = "UNKNOWN_JUMP_TARGET"
+RETURN_TO_CALLER = "RETURN_TO_CALLER"
 
 
 class Program():

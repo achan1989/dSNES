@@ -73,6 +73,6 @@ def get_jump_target(instruction):
 
     if instruction.is_function_return:
         assert len(instruction.operands) == 0
-        return dasm_objects.UNKNOWN_JUMP_TARGET
+        return dasm_objects.RETURN_TO_CALLER
 
     raise Exception("Instruction {} is not a jump".format(instruction))
