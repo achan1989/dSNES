@@ -40,8 +40,13 @@ class Chunk():
                 # If the target already has a label that's ok.
                 pass
 
-    def print_instructions(self):
+    def print_instructions(self, symbol_resolver=None):
         print("Chunk at 0x{addr:04X}:".format(addr=self.start_address))
         for inst in self.instructions:
+            if symbol_resolver:
+                label = symbol_resolver.get_label(inst.address)
+                if label:
+                    print("{}:".format(label))
+
             print("0x{addr:04X}    {asm}".format(
                 addr=inst.address, asm=inst.assembly_string))
