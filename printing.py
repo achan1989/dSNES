@@ -3,9 +3,19 @@ from util import dw_to_uint, tc_to_int
 
 
 def format_absolute(instruction, symbols=None):
-    return "{ins} ${ops:04X}".format(
+    format_string = "{ins} ${address:04X}"
+    address = dw_to_uint(instruction.operands)
+    label = None
+
+    if symbols:
+        label = symbols.get_label(address)
+        if label:
+            format_string = "{ins} {label}"
+
+    return format_string.format(
         ins=instruction.mnemonic,
-        ops=dw_to_uint(instruction.operands))
+        address=address,
+        label=label)
 
 def format_absolute_x(instruction, symbols=None):
     return "{ins} ${ops:04X},X".format(
