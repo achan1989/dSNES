@@ -4,6 +4,9 @@ class SymbolSet():
         self._label_addresses = dict()
         self._generic_id = 0
 
+    def load(self, config_path):
+        pass
+
     def add_label(self, address, label):
         if address in self._address_labels:
             raise TargetRelabelException("{:#04X} has already been given the "

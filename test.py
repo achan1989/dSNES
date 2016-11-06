@@ -1,5 +1,6 @@
 import sys
 
+import loader
 import extract
 import memory
 import dasm
@@ -22,13 +23,7 @@ def basic_test(address):
             asm=instruction.assembly_string))
 
 
-def disassemble_program():
-    prog_rom = extract.extract("smb.nes")
-    mem = memory.Memory()
-    mem.map_prog_rom(prog_rom)
-    del prog_rom
-
-    program = dasm_objects.Program(mem)
+def disassemble_program(program):
     dasm.disassemble_program(program)
     return program
 
@@ -50,5 +45,6 @@ if __name__ == "__main__":
         address = int(sys.argv[1], base=0)
 
     # basic_test(address)
-    p = disassemble_program()
+    p = loader.load("smb.nes")
+    disassemble_program(p)
     test_print(p)
