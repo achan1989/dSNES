@@ -2,36 +2,72 @@
 Represents all of NES memory for SMB.
 """
 
+import collections
+
+
+class Section():
+    def __init__(self, name, start, end):
+        self.name = name
+        self.start = start
+        self.end = end
+
+    @property
+    def size(self):
+        return 1 + self.end - self.start
+
+    def contains(self, address):
+        return self.start <= address <= self.end
+
+class Mirror():
+    def __init__(self, section, start, end):
+        self.section = section
+        self.start = start
+        self.end = end
+
+    def contains(self, address):
+        return self.start <= address <= self.end
+
+    def normalise(self, address):
+        assert self.contains(address)
+        offset = address % self.section.size
+        return self.section.start + offset
+
+
+# The following 4 are always correct.
+RAM = Section("RAM", 0x00, 0x07FF)
+PPU = Section("PPU", 0x2000, 0x2007)
+APU_IO = Section("APU/IO", 0x4000, 0x4017)
+Test = Section("test", 0x4018, 0x401F)
+# Program ROM mapping is a function of the cartridge, so changes depending on
+# the game.
+# TODO: make a cartridge/mapper object to handle this properly.
+PROM = Section("program ROM", 0x8000, 0xFFFF)
+
+sections = [RAM, PPU, APU_IO, Test, PROM]
+mirrors = [
+    Mirror(RAM, 0x0800, 0x1FFF),
+    Mirror(PPU, 0x2008, 0x3FFF)
+]
+
+def normalise(address):
+    for section in sections:
+        if section.contains(address):
+            return address
+
+    for mirror in mirrors:
+        if mirror.contains(address):
+            return mirror.normalise(address)
+
+    # Not in a section we know about.  Meh.
+    return address
+
 class Memory:
-    int_ram_start = 0x00
-    int_ram_end = 0x07FF
-    int_ram_size = 0x0800
-    int_ram_mirror_end = 0x01FFF
-
-    ppu_start = 0x2000
-    ppu_end = 0x2007
-    ppu_size = 0x08
-    ppu_mirror_end = 0x3FFF
-
-    apu_io_start = 0x4000
-    apu_io_end = 0x4017
-    apu_io_size = 0x18
-
-    test_start = 0x4018
-    test_end = 0x401F
-    test_size = 0x08
-
-    prog_start = 0x8000
-    prog_end =0xFFFF
-    prog_size = 0x8000
-
-    max_index = 0xFFFF
-    size = max_index + 1
-
+    Max_index = 0xFFFF
+    Size = Max_index + 1
 
     def __init__(self):
-        self._int_ram = bytearray(0x0800)
-        self._prog_rom = bytearray(0x8000)
+        self._int_ram = bytearray(RAM.size)
+        self._prog_rom = bytearray(PROM.size)
 
     def map_prog_rom(self, prog_rom):
         assert len(prog_rom) == len(self._prog_rom)
@@ -54,25 +90,28 @@ class Memory:
         if type(key) == slice:
             raise TypeError("Cannot use slices")
 
-        if key < 0 or key > Memory.max_index:
+        if key < 0 or key > Memory.Max_index:
             raise IndexError()
 
-        if key <= Memory.int_ram_mirror_end:
-            i = key % Memory.int_ram_size
-            return self._int_ram[i]
+        address = normalise(key)
 
-        if key <= Memory.ppu_mirror_end:
-            i = key % Memory.ppu_size
-            return "PPU reg at 0x{0:X}".format(Memory.ppu_start + i)
+        if address <= RAM.end:
+            return self._int_ram[address]
 
-        if key <= Memory.apu_io_end:
-            return "APU/IO reg at 0x{0:X}".format(key)
+        if address <= PPU.end:
+            return "PPU reg at 0x{0:X}".format(address)
+
+        if address <= APU_IO.end:
+            return "APU/IO reg at 0x{0:X}".format(address)
+
+        if address <= Test.end:
+            return "Test reg at 0x{0:X}".format(address)
 
         # Up to this point all addresses have been mapped to something.
         # This is not true within the cartridge space.
 
-        if key >= Memory.prog_start and key <= Memory.prog_end:
-            return self._prog_rom[key - Memory.prog_start]
+        if PROM.contains(address):
+            return self._prog_rom[address - PROM.start]
 
         # Unmapped memory is just None for the moment.
         return None
