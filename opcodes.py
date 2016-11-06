@@ -57,9 +57,8 @@ class BaseInstruction():
     def address(self):
         return self._address
 
-    @property
-    def assembly_string(self):
-        return self._Instruction_formatter(self)
+    def assembly_string(self, symbols=None):
+        return self._Instruction_formatter(symbols)
 
     @property
     def is_conditional_jump(self):

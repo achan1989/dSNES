@@ -49,4 +49,5 @@ class Chunk():
                     print("{}:".format(label))
 
             print("0x{addr:04X}    {asm}".format(
-                addr=inst.address, asm=inst.assembly_string))
+                addr=inst.address,
+                asm=inst.assembly_string(symbol_resolver)))
