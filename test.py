@@ -36,8 +36,8 @@ def disassemble_program():
 def test_print(prog):
     chunk = prog.chunks.pop()
 
-    print("\nBasic print:")
-    chunk.print_instructions()
+    # print("\nBasic print:")
+    # chunk.print_instructions()
 
     print("\nPrint with symbols resolved:")
     chunk.print_instructions(prog.labels)
@@ -49,6 +49,6 @@ if __name__ == "__main__":
     else:
         address = int(sys.argv[1], base=0)
 
-    #basic_test(address)
+    # basic_test(address)
     p = disassemble_program()
     test_print(p)

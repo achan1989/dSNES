@@ -13,7 +13,7 @@ def disassemble_instruction(mem, address):
 
 def disassemble_program(program):
     find_and_label_entry_points(program)
-    program.print_entry_points()
+    # program.print_entry_points()
 
     for ep in program.entry_points:
         disassemble_chunk(program, ep)
@@ -69,7 +69,7 @@ def get_jump_target(instruction):
         assert len(instruction.operands) == 1
         operand = instruction.operands[0]
         # They are relative to the end of the instruction, not the start.
-        return instruction.address + 2 + tc_to_int(operand)
+        return instruction.address + instruction.size + tc_to_int(operand)
 
     if instruction.is_unconditional_jump or instruction.is_function_call:
         if instruction.category == opcodes.category.JmpAbsolute:
