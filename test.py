@@ -45,6 +45,6 @@ if __name__ == "__main__":
         address = int(sys.argv[1], base=0)
 
     # basic_test(address)
-    p = loader.load("smb.nes")
+    p = loader.load("smb.nes", "smb.config")
     disassemble_program(p)
     test_print(p)
