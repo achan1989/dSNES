@@ -36,12 +36,12 @@ def disassemble_chunk(program, start_address):
             chunk.add_and_label_exit_point(
                 instruction.address,
                 get_jump_target(instruction),
-                program.labels)
+                program.symbols)
         if instruction.is_unconditional_jump or instruction.is_function_return:
             chunk.add_and_label_exit_point(
                 instruction.address,
                 get_jump_target(instruction),
-                program.labels)
+                program.symbols)
             break
 
     program.chunks.add(chunk)
@@ -55,7 +55,7 @@ def find_and_label_entry_points(program):
     for label, v in vectors:
         address = read_dword(program.mem, v)
         program.entry_points.add(address)
-        program.labels.add(address, label)
+        program.symbols.add_label(address, label)
 
 def read_dword(mem, address):
     """ Read a 2-byte dword, little-endian, at the given address. """

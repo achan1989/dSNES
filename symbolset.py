@@ -1,10 +1,10 @@
-class LabelSet():
+class SymbolSet():
     def __init__(self):
         self._address_labels = dict()
         self._label_addresses = dict()
         self._generic_id = 0
 
-    def add(self, address, label):
+    def add_label(self, address, label):
         if address in self._address_labels:
             raise TargetRelabelException("{:#04X} has already been given the "
                 "label {}".format(address, self._address_labels[address]))
@@ -15,9 +15,9 @@ class LabelSet():
         self._address_labels[address] = label
         self._label_addresses[label] = address
 
-    def add_generic(self, address):
+    def add_generic_label(self, address):
         label = "label{:04}".format(self._generic_id)
-        self.add(address, label)
+        self.add_label(address, label)
         self._generic_id += 1
 
     def get_label(self, address):

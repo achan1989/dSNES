@@ -40,7 +40,7 @@ def test_print(prog):
     # chunk.print_instructions()
 
     print("\nPrint with symbols resolved:")
-    chunk.print_instructions(prog.labels)
+    chunk.print_instructions(prog.symbols)
 
 
 if __name__ == "__main__":
