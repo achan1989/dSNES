@@ -1,6 +1,8 @@
 import opcodes
 import dasm_objects
 from util import dw_to_uint, tc_to_int
+import memory
+import symbolset
 
 
 def disassemble_instruction(mem, address):
@@ -37,12 +39,32 @@ def disassemble_chunk(program, start_address):
                 instruction.address,
                 get_jump_target(instruction),
                 program.symbols)
-        if instruction.is_unconditional_jump or instruction.is_function_return:
+        elif instruction.is_unconditional_jump or instruction.is_function_return:
+            target = get_jump_target(instruction)
             chunk.add_and_label_exit_point(
                 instruction.address,
-                get_jump_target(instruction),
+                target,
                 program.symbols)
+
+            if target == dasm_objects.UNKNOWN_JUMP_TARGET:
+                # We don't know where the jump will go (indirect jump) but we
+                # should try to name the indirection variable.
+                ref = get_ram_reference(instruction)
+                if ref:
+                    try:
+                        program.symbols.add_generic_variable(ref)
+                    except symbolset.TargetRelabelException:
+                        # If the variable already has a name that's ok.
+                        pass
             break
+        else:
+            ref = get_ram_reference(instruction)
+            if ref:
+                try:
+                    program.symbols.add_generic_variable(ref)
+                except symbolset.TargetRelabelException:
+                    # If the variable already has a name that's ok.
+                    pass
 
     program.chunks.add(chunk)
 
@@ -83,3 +105,23 @@ def get_jump_target(instruction):
         return dasm_objects.RETURN_TO_CALLER
 
     raise Exception("Instruction {} is not a jump".format(instruction))
+
+def get_ram_reference(instruction):
+    """
+    Try to get a reference to a location in RAM from an instruction's
+    operand.  May return None.
+    """
+    address = None
+
+    # Yuck...
+    if "Absolute" in instruction.category:
+        address = dw_to_uint(instruction.operands)
+
+    # Yuck...
+    if "Direct" in instruction.category:
+        address = instruction.operands[0]
+
+    if address and memory.RAM.contains(address):
+        return address
+
+    return None
