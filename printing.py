@@ -18,42 +18,112 @@ def format_absolute(instruction, symbols=None):
         label=label)
 
 def format_absolute_x(instruction, symbols=None):
-    return "{ins} ${ops:04X},X".format(
+    format_string = "{ins} ${address:04X},X"
+    address = dw_to_uint(instruction.operands)
+    label = None
+
+    if symbols:
+        label = symbols.get_label(address)
+        if label:
+            format_string = "{ins} {label},X"
+
+    return format_string.format(
         ins=instruction.mnemonic,
-        ops=dw_to_uint(instruction.operands))
+        address=address,
+        label=label)
 
 def format_absolute_y(instruction, symbols=None):
-    return "{ins} ${ops:04X},Y".format(
+    format_string = "{ins} ${address:04X},Y"
+    address = dw_to_uint(instruction.operands)
+    label = None
+
+    if symbols:
+        label = symbols.get_label(address)
+        if label:
+            format_string = "{ins} {label},Y"
+
+    return format_string.format(
         ins=instruction.mnemonic,
-        ops=dw_to_uint(instruction.operands))
+        address=address,
+        label=label)
 
 def format_accumulator(instruction, symbols=None):
     return "{ins} A".format(ins=instruction.mnemonic)
 
 def format_direct(instruction, symbols=None):
-    return "{ins} ${ops:02X}".format(
+    format_string = "{ins} ${address:02X}"
+    address = instruction.operands[0]
+    label = None
+
+    if symbols:
+        label = symbols.get_label(address)
+        if label:
+            format_string = "{ins} {label}"
+
+    return format_string.format(
         ins=instruction.mnemonic,
-        ops=instruction.operands[0])
+        address=address,
+        label=label)
 
 def format_direct_indirect_y(instruction, symbols=None):
-    return "{ins} (${ops:02X}),Y".format(
+    format_string = "{ins} (${address:02X}),Y"
+    address = instruction.operands[0]
+    label = None
+
+    if symbols:
+        label = symbols.get_label(address)
+        if label:
+            format_string = "{ins} ({label}),Y"
+
+    return format_string.format(
         ins=instruction.mnemonic,
-        ops=instruction.operands[0])
+        address=address,
+        label=label)
 
 def format_direct_x(instruction, symbols=None):
-    return "{ins} ${ops:02X},X".format(
+    format_string = "{ins} ${address:02X},X"
+    address = instruction.operands[0]
+    label = None
+
+    if symbols:
+        label = symbols.get_label(address)
+        if label:
+            format_string = "{ins} {label},X"
+
+    return format_string.format(
         ins=instruction.mnemonic,
-        ops=instruction.operands[0])
+        address=address,
+        label=label)
 
 def format_direct_x_indirect(instruction, symbols=None):
-    return "{ins} (${ops:02X},X)".format(
+    format_string = "{ins} (${address:02X},X)"
+    address = instruction.operands[0]
+    label = None
+
+    if symbols:
+        label = symbols.get_label(address)
+        if label:
+            format_string = "{ins} ({label},X)"
+
+    return format_string.format(
         ins=instruction.mnemonic,
-        ops=instruction.operands[0])
+        address=address,
+        label=label)
 
 def format_direct_y(instruction, symbols=None):
-    return "{ins} ${ops:02X},Y".format(
+    format_string = "{ins} ${address:02X},Y"
+    address = instruction.operands[0]
+    label = None
+
+    if symbols:
+        label = symbols.get_label(address)
+        if label:
+            format_string = "{ins} {label},Y"
+
+    return format_string.format(
         ins=instruction.mnemonic,
-        ops=instruction.operands[0])
+        address=address,
+        label=label)
 
 def format_illegal(instruction, symbols=None):
     return "??? ???"
