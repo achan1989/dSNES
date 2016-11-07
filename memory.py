@@ -56,7 +56,11 @@ def normalise(address):
 
     for mirror in mirrors:
         if mirror.contains(address):
-            return mirror.normalise(address)
+            norm_address = mirror.normalise(address)
+            if norm_address != address:
+                print("WARNING: address {:#04X} is a mirror of {:#04X}.".format(
+                    address, norm_address))
+            return norm_address
 
     # Not in a section we know about.  Meh.
     return address
