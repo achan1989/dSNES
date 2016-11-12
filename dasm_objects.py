@@ -12,7 +12,7 @@ class Program():
         self.mem = memory
         self.entry_points = set()
         self.symbols = symbolset.SymbolSet()
-        self.chunks = set()
+        self.chunks = []
 
     def print_entry_points(self):
         addresses = [
@@ -20,6 +20,15 @@ class Program():
                 label=self.symbols.get_label(addr), address=addr)
             for addr in self.entry_points]
         print("Entry points are:\n{}".format("\n".join(addresses)))
+
+    def get_chunk(self, address):
+        """ Try to find a chunk that contains the given address.  May return
+        None.
+        """
+        for chunk in self.chunks:
+            if chunk.start_address <= address <= chunk.end_address:
+                return chunk
+        return None
 
 
 class Chunk():
@@ -29,6 +38,10 @@ class Chunk():
         self.entry_points = set((start_address,))
         self.exit_points = set()
         self.instructions = []
+
+    def __str__(self):
+        return "<chunk from 0x{:04X} to 0x{:04X}>".format(
+            self.start_address, self.end_address)
 
     def add_instruction(self, instruction):
         self.instructions.append(instruction)

@@ -1,3 +1,5 @@
+import collections
+
 import opcodes
 import dasm_objects
 from util import dw_to_uint, tc_to_int
@@ -17,8 +19,27 @@ def disassemble_program(program):
     find_and_label_entry_points(program)
     # program.print_entry_points()
 
-    for ep in program.entry_points:
-        disassemble_chunk(program, ep)
+    queue = collections.deque(program.entry_points)
+    chunk_count = 0
+
+    while True:
+        try:
+            target = queue.popleft()
+        except IndexError:
+            break
+
+        # Only disassemble chunks at locations that we haven't disassembled
+        # already.
+        existing_chunk = program.get_chunk(target)
+        if not existing_chunk:
+            print("Disassembling chunk {}".format(chunk_count))
+            chunk = disassemble_chunk(program, target)
+            for _, target in chunk.exit_points:
+                if target not in dasm_objects.SPECIAL_TARGETS:
+                    queue.append(target)
+            chunk_count += 1
+
+    print("\nDisassembling finished.")
 
 def disassemble_chunk(program, start_address):
     chunk = dasm_objects.Chunk(start_address)
@@ -27,6 +48,7 @@ def disassemble_chunk(program, start_address):
     while True:
         instruction = disassemble_instruction(program.mem, address)
         if instruction.category == opcodes.category.Illegal:
+            print("\nError disassembling chunk.")
             chunk.print_instructions()
             import pdb; pdb.set_trace()
             raise Exception("Tried to disassemble illegal "
@@ -67,7 +89,8 @@ def disassemble_chunk(program, start_address):
                     pass
 
     chunk.clean_exit_points()
-    program.chunks.add(chunk)
+    program.chunks.append(chunk)
+    return chunk
 
 def find_and_label_entry_points(program):
     vectors = (

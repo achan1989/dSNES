@@ -29,7 +29,7 @@ def disassemble_program(program):
 
 
 def test_print(prog):
-    chunk = prog.chunks.pop()
+    chunk = prog.chunks[0]
 
     # print("\nBasic print:")
     # chunk.print_instructions()
