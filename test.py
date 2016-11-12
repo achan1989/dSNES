@@ -35,7 +35,7 @@ def test_print(prog):
     # chunk.print_instructions()
 
     print("\nPrint with symbols resolved:")
-    chunk.print_instructions(prog.symbols)
+    chunk.print_instructions(prog.symbols, prog.config)
 
     print("\nExit points:")
     for address, target in chunk.exit_points:

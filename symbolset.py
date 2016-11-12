@@ -40,6 +40,14 @@ class SymbolSet():
         return self._label_addresses.get(label, None)
 
 
+class NullSymbols():
+    def get_label(self, address):
+        return None
+
+    def get_address(self, label):
+        return None
+
+
 class TargetRelabelException(Exception):
     pass
 

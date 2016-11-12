@@ -97,16 +97,33 @@ class Chunk():
                 return ep
         return None
 
-    def print_instructions(self, symbols=None):
+    def print_instructions(self, symbols=None, config=None):
+        if symbols is None:
+            symbols = symbolset.NullSymbols()
+        if config is None:
+            config = configset.NullConfig()
+
         print("Chunk from 0x{start:04X} to 0x{end:04X}:".format(
             start=self.start_address,
             end=self.end_address))
-        for inst in self.instructions:
-            if symbols:
-                label = symbols.get_label(inst.address)
-                if label:
-                    print("{}:".format(label))
 
-            print("0x{addr:04X}    {asm}".format(
+        for inst in self.instructions:
+            label = symbols.get_label(inst.address)
+            if label:
+                print("{}:".format(label))
+            pre_comment = config.get_pre_comment(inst.address)
+            if pre_comment:
+                print(";{}".format(pre_comment))
+
+            line_fmt = "0x{addr:04X}    {asm}"
+            inline_comment = config.get_inline_comment(inst.address)
+            if inline_comment:
+                line_fmt += "   ;{comment}"
+            print(line_fmt.format(
                 addr=inst.address,
-                asm=inst.assembly_string(symbols)))
+                asm=inst.assembly_string(symbols),
+                comment=inline_comment))
+
+            post_comment = config.get_post_comment(inst.address)
+            if post_comment:
+                print(";{}".format(post_comment))

@@ -50,7 +50,7 @@ def disassemble_chunk(program, start_address):
         instruction = disassemble_instruction(program.mem, address)
         if instruction.category == opcodes.category.Illegal:
             print("\nError disassembling chunk.")
-            chunk.print_instructions(program.symbols)
+            chunk.print_instructions(program.symbols, program.config)
             import pdb; pdb.set_trace()
             raise Exception("Tried to disassemble illegal "
                 "instruction {}".format(instruction))
