@@ -32,6 +32,24 @@ class Program():
                 return chunk
         return None
 
+    def print_callers_of(self, target):
+        callers = self.get_callers_of(target)
+        print("Callers of 0x{:04X}:".format(target))
+        if len(callers) == 0:
+            print("None")
+        else:
+            for chunk, ep in callers:
+                address, _ = ep
+                print("{} at address 0x{:04X}".format(chunk, address))
+
+    def get_callers_of(self, target):
+        callers = []
+        for chunk in self.chunks:
+            ep = chunk.get_exit_point_with_target(target)
+            if ep:
+                callers.append((chunk, ep))
+        return callers
+
 
 class Chunk():
     def __init__(self, start_address):
@@ -71,6 +89,13 @@ class Chunk():
                 return True
             return not (self.start_address <= target <= self.end_address)
         self.exit_points = set([ep for ep in self.exit_points if is_valid(ep)])
+
+    def get_exit_point_with_target(self, target):
+        for ep in self.exit_points:
+            _, ep_target = ep
+            if target == ep_target:
+                return ep
+        return None
 
     def print_instructions(self, symbols=None):
         print("Chunk from 0x{start:04X} to 0x{end:04X}:".format(
