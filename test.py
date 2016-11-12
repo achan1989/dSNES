@@ -37,6 +37,13 @@ def test_print(prog):
     print("\nPrint with symbols resolved:")
     chunk.print_instructions(prog.symbols)
 
+    print("\nExit points:")
+    for address, target in chunk.exit_points:
+        if type(target) is str:
+            print("0x{:04X} --> {}".format(address, target))
+        else:
+            print("0x{:04X} --> 0x{:04X}".format(address, target))
+
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:

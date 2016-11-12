@@ -66,6 +66,7 @@ def disassemble_chunk(program, start_address):
                     # If the variable already has a name that's ok.
                     pass
 
+    chunk.clean_exit_points()
     program.chunks.add(chunk)
 
 def find_and_label_entry_points(program):
