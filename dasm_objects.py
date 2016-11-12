@@ -130,12 +130,18 @@ class Chunk():
             if pre_comment:
                 print(";{}".format(pre_comment))
 
-            line_fmt = "0x{addr:04X}    {asm}"
+            raw_bytes = "$[{}]".format(" ".join(
+                ["{:02X}".format(r) for r in inst.raw_bytes]))
+            preamble = "0x{addr:04X}  {raw}".format(
+                addr=inst.address,
+                raw=raw_bytes)
+            line_fmt = "{preamble:<19}    {asm}"
+
             inline_comment = config.get_inline_comment(inst.address)
             if inline_comment:
                 line_fmt += "   ;{comment}"
             print(line_fmt.format(
-                addr=inst.address,
+                preamble=preamble,
                 asm=inst.assembly_string(symbols),
                 comment=inline_comment))
 

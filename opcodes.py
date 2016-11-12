@@ -61,6 +61,12 @@ class BaseInstruction():
         return self._Instruction_formatter(symbols)
 
     @property
+    def raw_bytes(self):
+        raw = [self.opcode]
+        raw.extend(self.operands)
+        return raw
+
+    @property
     def is_conditional_jump(self):
         return type(self) in conditional_jump_classes
 
