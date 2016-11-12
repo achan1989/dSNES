@@ -30,7 +30,7 @@ def disassemble_program(program):
 
         # Only disassemble chunks at locations that we haven't disassembled
         # already.
-        existing_chunk = program.get_chunk(target)
+        existing_chunk = program.get_chunk_containing(target)
         if not existing_chunk:
             print("Disassembling chunk {}".format(chunk_count))
             chunk = disassemble_chunk(program, target)
