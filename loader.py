@@ -23,18 +23,39 @@ def load_config(config_path, symbols, config):
     parsed = configparser.ConfigParser(allow_no_value=True)
     parsed.read(config_path)
 
+    count = 0
     if "LABELS" in parsed:
-        count = 0
         for address, label in parsed.items("LABELS"):
             address = int(address, base=0)
             symbols.add_label(address, label)
             count += 1
-        print("Loaded {} labels.".format(count))
+    print("Loaded {} labels.".format(count))
 
+    count = 0
     if "FORCE END CHUNK" in parsed:
-        count = 0
-        for address, _ in parsed.items("FORCE END CHUNK"):
+        for address, comment in parsed.items("FORCE END CHUNK"):
             address = int(address, base=0)
             config.forced_chunk_ends.append(address)
+            config.add_post_comment(address, comment)
             count += 1
-        print("Loaded {} forced chunk ends.".format(count))
+    print("Loaded {} forced chunk ends.".format(count))
+
+    count = 0
+    if "PRE COMMENTS" in parsed:
+        for address, comment in parsed.items("PRE COMMENTS"):
+            address = int(address, base=0)
+            config.add_pre_comment(address, comment)
+            count += 1
+
+    if "INLINE COMMENTS" in parsed:
+        for address, comment in parsed.items("INLINE COMMENTS"):
+            address = int(address, base=0)
+            config.add_inline_comment(address, comment)
+            count += 1
+
+    if "POST COMMENTS" in parsed:
+        for address, comment in parsed.items("POST COMMENTS"):
+            address = int(address, base=0)
+            config.add_post_comment(address, comment)
+            count += 1
+    print("Loaded {} comments.".format(count))
