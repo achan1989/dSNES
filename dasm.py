@@ -45,7 +45,8 @@ def disassemble_chunk(program, start_address):
     chunk = dasm_objects.Chunk(start_address)
 
     address = start_address
-    while True:
+    end_of_chunk = False
+    while not end_of_chunk:
         instruction = disassemble_instruction(program.mem, address)
         if instruction.category == opcodes.category.Illegal:
             print("\nError disassembling chunk.")
@@ -62,6 +63,7 @@ def disassemble_chunk(program, start_address):
                 get_jump_target(instruction),
                 program.symbols)
         elif instruction.is_unconditional_jump or instruction.is_function_return:
+            end_of_chunk = True
             target = get_jump_target(instruction)
             chunk.add_and_label_exit_point(
                 instruction.address,
@@ -78,7 +80,6 @@ def disassemble_chunk(program, start_address):
                     except symbolset.TargetRelabelException:
                         # If the variable already has a name that's ok.
                         pass
-            break
         else:
             ref = get_ram_reference(instruction)
             if ref:
@@ -87,6 +88,11 @@ def disassemble_chunk(program, start_address):
                 except symbolset.TargetRelabelException:
                     # If the variable already has a name that's ok.
                     pass
+
+        if instruction.address in program.config.forced_chunk_ends:
+            print("Forced the end of this chunk disassembly after "
+                "0x{:04X}".format(instruction.address))
+            end_of_chunk = True
 
     chunk.clean_exit_points()
     program.chunks.append(chunk)
