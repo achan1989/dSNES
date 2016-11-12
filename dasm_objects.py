@@ -1,5 +1,5 @@
 import symbolset
-import config
+import configset
 
 
 UNKNOWN_JUMP_TARGET = "UNKNOWN_JUMP_TARGET"
@@ -13,7 +13,7 @@ class Program():
         self.mem = memory
         self.entry_points = set()
         self.symbols = symbolset.SymbolSet()
-        self.config = config.Config()
+        self.config = configset.Config()
         self.chunks = []
 
     def print_entry_points(self):
