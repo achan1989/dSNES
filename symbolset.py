@@ -32,6 +32,14 @@ class SymbolSet():
         self.add_label(address, label)
         self._generic_id += 1
 
+    def add_zp_variable(self, address):
+        address = memory.normalise(address)
+        assert memory.RAM.contains(address)
+        assert address <= memory.MAX_ZERO_PAGE
+        label = "zpv{:04}".format(self._generic_id)
+        self.add_label(address, label)
+        self._generic_id += 1
+
     def get_label(self, address):
         address = memory.normalise(address)
         return self._address_labels.get(address, None)

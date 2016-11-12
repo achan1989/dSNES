@@ -5,6 +5,9 @@ Represents all of NES memory for SMB.
 import collections
 
 
+MAX_ZERO_PAGE = 0xFF
+
+
 class Section():
     def __init__(self, name, start, end):
         self.name = name

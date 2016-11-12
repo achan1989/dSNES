@@ -84,7 +84,10 @@ def disassemble_chunk(program, start_address):
             ref = get_ram_reference(instruction)
             if ref:
                 try:
-                    program.symbols.add_generic_variable(ref)
+                    if ref <= memory.MAX_ZERO_PAGE:
+                        program.symbols.add_zp_variable(ref)
+                    else:
+                        program.symbols.add_generic_variable(ref)
                 except symbolset.TargetRelabelException:
                     # If the variable already has a name that's ok.
                     pass
