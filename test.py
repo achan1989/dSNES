@@ -45,13 +45,36 @@ def test_print(prog):
             print("0x{:04X} --> 0x{:04X}".format(address, target))
 
 
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        address = 0x8000
+def parse_args(args):
+    address = None
+    label = None
+
+    if len(args) == 1:
+        label = "RESET"
     else:
-        address = int(sys.argv[1], base=0)
+        label = args[1]
+        try:
+            address = int(args[1], base=0)
+        except ValueError:
+            pass
+    return address, label
+
+
+if __name__ == "__main__":
+    address, label = parse_args(sys.argv)
 
     # basic_test(address)
     p = loader.load("smb.nes", "smb.config")
     disassemble_program(p)
-    test_print(p)
+    # test_print(p)
+
+    # Find the chunk at the given address or label.
+    # Try address first, as that's harder.
+    c = p.get_chunk_starting(address)
+    if not c:
+        c = p.get_chunk_starting(label)
+
+    if c:
+        c.print_instructions(p.symbols, p.config)
+    else:
+        print("No chunk found at {} or {}".format(address, label))
