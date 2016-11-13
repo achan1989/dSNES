@@ -128,7 +128,9 @@ class Chunk():
                 print("{}:".format(label))
             pre_comment = config.get_pre_comment(inst.address)
             if pre_comment:
-                print(";{}".format(pre_comment))
+                pre_comment = pre_comment.split("\\n")
+                for prec in pre_comment:
+                    print(";{}".format(prec))
 
             raw_bytes = "$[{}]".format(" ".join(
                 ["{:02X}".format(r) for r in inst.raw_bytes]))
@@ -147,4 +149,6 @@ class Chunk():
 
             post_comment = config.get_post_comment(inst.address)
             if post_comment:
-                print(";{}".format(post_comment))
+                post_comment = post_comment.split("\\n")
+                for postc in post_comment:
+                    print(";{}".format(postc))
