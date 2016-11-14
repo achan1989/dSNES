@@ -110,7 +110,11 @@ def find_and_label_entry_points(program):
     for label, v in vectors:
         address = read_dword(program.mem, v)
         program.entry_points.add(address)
-        program.symbols.add_label(address, label)
+        try:
+            program.symbols.add_label(address, label)
+        except symbolset.TargetRelabelException:
+            # If the variable already has a name that's ok.
+            pass
 
 def read_dword(mem, address):
     """ Read a 2-byte dword, little-endian, at the given address. """
