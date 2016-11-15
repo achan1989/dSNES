@@ -27,13 +27,17 @@ class Program():
         """ Try to find a chunk that contains the given address or label.  May
         return None.
         """
+        if address_or_label is None:
+            return None
         # Assume we've been given a label, try to turn it into an address.
         address = self.symbols.get_address(address_or_label)
         if address is None:
-            # It probably wasn't a label, treat it as an address.
-            address = address_or_label
-        if address is None:
-            return None
+            # Not a label, treat it as an address.
+            try:
+                address = int(address_or_label)
+            except ValueError:
+                # It was a label, it just doesn't exist.
+                return None
 
         for chunk in self.chunks:
             if chunk.start_address <= address <= chunk.end_address:
@@ -44,13 +48,17 @@ class Program():
         """ Try to find a chunk that starts at the given address or label.  May
         return None.
         """
+        if address_or_label is None:
+            return None
         # Assume we've been given a label, try to turn it into an address.
         address = self.symbols.get_address(address_or_label)
         if address is None:
-            # It probably wasn't a label, treat it as an address.
-            address = address_or_label
-        if address is None:
-            return None
+            # Not a label, treat it as an address.
+            try:
+                address = int(address_or_label)
+            except ValueError:
+                # It was a label, it just doesn't exist.
+                return None
 
         for chunk in self.chunks:
             if chunk.start_address == address:
