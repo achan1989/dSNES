@@ -23,10 +23,18 @@ class Program():
             for addr in self.entry_points]
         print("Entry points are:\n{}".format("\n".join(addresses)))
 
-    def get_chunk_containing(self, address):
-        """ Try to find a chunk that contains the given address.  May return
-        None.
+    def get_chunk_containing(self, address_or_label):
+        """ Try to find a chunk that contains the given address or label.  May
+        return None.
         """
+        # Assume we've been given a label, try to turn it into an address.
+        address = self.symbols.get_address(address_or_label)
+        if address is None:
+            # It probably wasn't a label, treat it as an address.
+            address = address_or_label
+        if address is None:
+            return None
+
         for chunk in self.chunks:
             if chunk.start_address <= address <= chunk.end_address:
                 return chunk
@@ -41,6 +49,8 @@ class Program():
         if address is None:
             # It probably wasn't a label, treat it as an address.
             address = address_or_label
+        if address is None:
+            return None
 
         for chunk in self.chunks:
             if chunk.start_address == address:

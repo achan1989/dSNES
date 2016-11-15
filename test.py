@@ -73,6 +73,12 @@ if __name__ == "__main__":
     c = p.get_chunk_starting(address)
     if not c:
         c = p.get_chunk_starting(label)
+    # If still not found, look for a chunk containing the given address or
+    # label.  Try address first, as that's harder.
+    if not c:
+        c = p.get_chunk_containing(address)
+    if not c:
+        c = p.get_chunk_containing(label)
 
     if c:
         c.print_instructions(p.symbols, p.config)
