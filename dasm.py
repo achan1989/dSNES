@@ -32,9 +32,10 @@ def disassemble_program(program):
         # already.
         existing_chunk = program.get_chunk_containing(target)
         if not existing_chunk:
-            print("Disassembling chunk {}".format(chunk_count))
+            print("Disassembling chunk {} at 0x{:04X}".format(
+                chunk_count, target))
             chunk = disassemble_chunk(program, target)
-            for _, target in chunk.exit_points:
+            for address, target in chunk.exit_points:
                 if target not in dasm_objects.SPECIAL_TARGETS:
                     queue.append(target)
             chunk_count += 1
