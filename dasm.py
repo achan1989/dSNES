@@ -82,7 +82,7 @@ def disassemble_chunk(program, start_address):
                         pass
         else:
             ref = get_ram_reference(instruction)
-            if ref:
+            if ref is not None:
                 try:
                     if ref <= memory.MAX_ZERO_PAGE:
                         program.symbols.add_zp_variable(ref)
@@ -158,7 +158,7 @@ def get_ram_reference(instruction):
     if "Direct" in instruction.category:
         address = instruction.operands[0]
 
-    if address and memory.RAM.contains(address):
+    if address is not None and memory.RAM.contains(address):
         return address
 
     return None
