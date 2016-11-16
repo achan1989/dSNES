@@ -152,12 +152,19 @@ def get_ram_reference(instruction):
     """
     address = None
 
-    # Yuck...
-    if "Absolute" in instruction.category:
+    if instruction.category in (
+            opcodes.category.Absolute,
+            opcodes.category.AbsoluteX,
+            opcodes.category.AbsoluteY,
+            opcodes.category.JmpAbsoluteIndirect):
         address = dw_to_uint(instruction.operands)
 
-    # Yuck...
-    if "Direct" in instruction.category:
+    elif instruction.category in (
+            opcodes.category.ZeroPage,
+            opcodes.category.ZeroPageX,
+            opcodes.category.ZeroPageY,
+            opcodes.category.ZeroPageIndirectY,
+            opcodes.category.ZeroPageXIndirect):
         address = instruction.operands[0]
 
     if address is not None and memory.RAM.contains(address):
