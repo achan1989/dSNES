@@ -30,9 +30,9 @@ class SymbolSet():
         address = memory.normalise(address)
         assert memory.RAM.contains(address)
         if address > memory.MAX_ZERO_PAGE:
-            label = "v{:04}".format(self._generic_id)
+            label = "var{:04}".format(self._generic_id)
         else:
-            label = "z{:04}".format(self._generic_id)
+            label = "zpv{:04}".format(self._generic_id)
         self.add_label(address, label)
         self._generic_id += 1
 
