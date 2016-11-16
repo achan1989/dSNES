@@ -3,6 +3,7 @@ Represents all of NES memory for SMB.
 """
 
 import collections
+import types
 
 
 MAX_ZERO_PAGE = 0xFF
@@ -122,3 +123,11 @@ class Memory:
 
         # Unmapped memory is just None for the moment.
         return None
+
+
+access = types.SimpleNamespace(
+    read="read",
+    write="write",
+    readwrite="readwrite",
+    none="none"
+    )

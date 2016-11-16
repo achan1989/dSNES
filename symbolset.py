@@ -6,6 +6,7 @@ class SymbolSet():
         self._address_labels = dict()
         self._label_addresses = dict()
         self._generic_id = 0
+        self._var_accesses = dict()
 
     def add_label(self, address, label):
         address = memory.normalise(address)
@@ -46,6 +47,27 @@ class SymbolSet():
 
     def get_address(self, label):
         return self._label_addresses.get(label, None)
+
+    def record_variable_access(self, chunk, address, access_kind):
+        """
+        Record read/write/readwrite access of a variable from a particular
+        address.
+        """
+        address = int(address)
+        assert access_kind in (
+            memory.access.read, memory.access.write, memory.access.readwrite)
+
+        try:
+            record = self._var_accesses[address]
+        except KeyError:
+            record = {
+                memory.access.read: [],
+                memory.access.write: [],
+                memory.access.readwrite: []
+            }
+            self._var_accesses[address] = record
+
+        record[access_kind].append((chunk, address))
 
 
 class NullSymbols():
