@@ -48,6 +48,9 @@ def disassemble_chunk(program, start_address):
     address = start_address
     end_of_chunk = False
     while not end_of_chunk:
+        is_exit_point = False
+        ram_ref = None
+
         instruction = disassemble_instruction(program.mem, address)
         if instruction.category == opcodes.category.Illegal:
             print("\nError disassembling chunk.")
@@ -59,12 +62,14 @@ def disassemble_chunk(program, start_address):
         address += instruction.size
 
         if instruction.is_conditional_jump or instruction.is_function_call:
-            chunk.add_and_label_exit_point(
-                instruction.address,
-                get_jump_target(instruction),
-                program.symbols)
+            is_exit_point = True
         elif instruction.is_unconditional_jump or instruction.is_function_return:
+            is_exit_point = True
             end_of_chunk = True
+        else:
+            ram_ref = get_ram_reference(instruction)
+
+        if is_exit_point:
             target = get_jump_target(instruction)
             chunk.add_and_label_exit_point(
                 instruction.address,
@@ -74,24 +79,20 @@ def disassemble_chunk(program, start_address):
             if target == dasm_objects.UNKNOWN_JUMP_TARGET:
                 # We don't know where the jump will go (indirect jump) but we
                 # should try to name the indirection variable.
-                ref = get_ram_reference(instruction)
-                if ref:
-                    try:
-                        program.symbols.add_generic_variable(ref)
-                    except symbolset.TargetRelabelException:
-                        # If the variable already has a name that's ok.
-                        pass
-        else:
-            ref = get_ram_reference(instruction)
-            if ref is not None:
-                try:
-                    if ref <= memory.MAX_ZERO_PAGE:
-                        program.symbols.add_zp_variable(ref)
-                    else:
-                        program.symbols.add_generic_variable(ref)
-                except symbolset.TargetRelabelException:
-                    # If the variable already has a name that's ok.
-                    pass
+                ram_ref = get_ram_reference(instruction)
+
+        if ram_ref is not None:
+            try:
+                if ram_ref <= memory.MAX_ZERO_PAGE:
+                    program.symbols.add_zp_variable(ram_ref)
+                else:
+                    program.symbols.add_generic_variable(ram_ref)
+            except symbolset.TargetRelabelException:
+                # If the variable already has a name that's ok.
+                pass
+
+            # TODO: program.symbols.record_variable_access(
+            #         chunk, ram_ref, todo_access_kind)
 
         if instruction.address in program.config.forced_chunk_ends:
             print("Forced the end of this chunk disassembly after "
