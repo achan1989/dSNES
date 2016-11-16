@@ -82,11 +82,27 @@ def disassemble_chunk(program, start_address):
                 ram_ref = get_ram_reference(instruction)
 
         if ram_ref is not None:
+            handler = None
+
+            if instruction.category in (
+                    opcodes.category.Absolute,
+                    opcodes.category.ZeroPage):
+                handler = program.symbols.add_generic_variable
+            elif instruction.category in (
+                    opcodes.category.AbsoluteX,
+                    opcodes.category.AbsoluteY,
+                    opcodes.category.ZeroPageX,
+                    opcodes.category.ZeroPageXIndirect,
+                    opcodes.category.ZeroPageY):
+                handler = program.symbols.add_base_variable
+            elif instruction.category in (
+                    opcodes.category.JmpAbsoluteIndirect,
+                    opcodes.category.ZeroPageIndirectY):
+                handler = program.symbols.add_indirect_variable
+
+            assert handler is not None
             try:
-                if ram_ref <= memory.MAX_ZERO_PAGE:
-                    program.symbols.add_zp_variable(ram_ref)
-                else:
-                    program.symbols.add_generic_variable(ram_ref)
+                handler(ram_ref)
             except symbolset.TargetRelabelException:
                 # If the variable already has a name that's ok.
                 pass

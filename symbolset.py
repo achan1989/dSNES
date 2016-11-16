@@ -29,17 +29,40 @@ class SymbolSet():
     def add_generic_variable(self, address):
         address = memory.normalise(address)
         assert memory.RAM.contains(address)
-        label = "var{:04}".format(self._generic_id)
+        if address > memory.MAX_ZERO_PAGE:
+            label = "v{:04}".format(self._generic_id)
+        else:
+            label = "z{:04}".format(self._generic_id)
         self.add_label(address, label)
         self._generic_id += 1
 
-    def add_zp_variable(self, address):
+    def add_base_variable(self, address):
         address = memory.normalise(address)
         assert memory.RAM.contains(address)
-        assert address <= memory.MAX_ZERO_PAGE
-        label = "zpv{:04}".format(self._generic_id)
+        if address > memory.MAX_ZERO_PAGE:
+            label = "vb{:04}".format(self._generic_id)
+        else:
+            label = "zb{:04}".format(self._generic_id)
         self.add_label(address, label)
         self._generic_id += 1
+
+    def add_indirect_variable(self, address):
+        address = memory.normalise(address)
+        assert memory.RAM.contains(address)
+        if address > memory.MAX_ZERO_PAGE:
+            label = "vi{:04}".format(self._generic_id)
+            self.add_label(address, label)
+            self._generic_id += 1
+        else:
+            # Indirection target is read from the provided ZP address and
+            # the ZP address immediately after it.  Wrapping is possible,
+            # but easier not to support it unless absolutely necessary.
+            assert address <= memory.MAX_ZERO_PAGE - 1
+            label = "zi{:04}".format(self._generic_id)
+            self.add_label(address, label)
+            self._generic_id += 1
+            self.add_label(address+1, label)
+            self._generic_id += 1
 
     def get_label(self, address):
         address = memory.normalise(address)
