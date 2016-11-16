@@ -50,7 +50,7 @@ def format_absolute_y(instruction, symbols=None):
 def format_accumulator(instruction, symbols=None):
     return "{ins} A".format(ins=instruction.mnemonic)
 
-def format_direct(instruction, symbols=None):
+def format_zero_page(instruction, symbols=None):
     format_string = "{ins} ${address:02X}"
     address = instruction.operands[0]
     label = None
@@ -65,7 +65,7 @@ def format_direct(instruction, symbols=None):
         address=address,
         label=label)
 
-def format_direct_indirect_y(instruction, symbols=None):
+def format_zero_page_indirect_y(instruction, symbols=None):
     format_string = "{ins} (${address:02X}),Y"
     address = instruction.operands[0]
     label = None
@@ -80,7 +80,7 @@ def format_direct_indirect_y(instruction, symbols=None):
         address=address,
         label=label)
 
-def format_direct_x(instruction, symbols=None):
+def format_zero_page_x(instruction, symbols=None):
     format_string = "{ins} ${address:02X},X"
     address = instruction.operands[0]
     label = None
@@ -95,7 +95,7 @@ def format_direct_x(instruction, symbols=None):
         address=address,
         label=label)
 
-def format_direct_x_indirect(instruction, symbols=None):
+def format_zero_page_x_indirect(instruction, symbols=None):
     format_string = "{ins} (${address:02X},X)"
     address = instruction.operands[0]
     label = None
@@ -110,7 +110,7 @@ def format_direct_x_indirect(instruction, symbols=None):
         address=address,
         label=label)
 
-def format_direct_y(instruction, symbols=None):
+def format_zero_page_y(instruction, symbols=None):
     format_string = "{ins} ${address:02X},Y"
     address = instruction.operands[0]
     label = None
