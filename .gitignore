@@ -89,5 +89,4 @@ ENV/
 .ropeproject
 
 # Misc stuff specific to me
-smb.nes
 *.sublime-*
