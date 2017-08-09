@@ -1,6 +1,8 @@
 """
 Represents all of NES memory for SMB.
 """
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
 
 import collections
 import types

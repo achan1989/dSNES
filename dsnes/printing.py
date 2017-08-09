@@ -1,3 +1,6 @@
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
+
 import opcodes
 from util import dw_to_uint, tc_to_int
 

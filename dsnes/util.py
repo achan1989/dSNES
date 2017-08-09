@@ -1,3 +1,6 @@
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
+
 def dw_to_uint(dw):
     assert len(dw) == 2
     lsb, msb = dw

@@ -1,3 +1,6 @@
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
+
 def _add_comment(address, comment, store):
     assert address not in store
     store[address] = comment

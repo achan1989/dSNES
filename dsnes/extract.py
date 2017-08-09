@@ -1,6 +1,8 @@
 """
 Extract the SMB program rom from the .nes file.
 """
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
 
 def extract(filename):
     nesfile = open(filename, 'rb')

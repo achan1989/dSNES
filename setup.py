@@ -1,4 +1,6 @@
 """dSNES project configuration."""
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
 
 from setuptools import setup, find_packages
 
@@ -15,14 +17,14 @@ setup(
 
     url='https://github.com/achan1989/dSNES',
 
-    author='achan1989',
+    author='Adrian Chan',
 
-    license='MIT',
+    license='GPLv3',
 
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
         'Development Status :: 3 - Alpha',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
         'Programming Language :: Python :: 3.5',
     ],
 
