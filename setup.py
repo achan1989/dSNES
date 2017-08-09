@@ -30,5 +30,5 @@ setup(
 
     packages=packages,
 
-    install_requires=[]
+    install_requires=['contoml']
 )
