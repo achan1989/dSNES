@@ -1,6 +1,8 @@
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
+import io
+
 def dw_to_uint(dw):
     assert len(dw) == 2
     lsb, msb = dw
@@ -14,3 +16,6 @@ def tc_to_int(value):
     if sign != 0:
         value -= (1 << 8)
     return value
+
+def is_filelike(obj):
+    return issubclass(type(obj), io.IOBase)
