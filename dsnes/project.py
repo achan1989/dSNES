@@ -3,7 +3,8 @@
 # Licensed under GPLv3
 
 import os
-import contoml
+
+from dsnes import contoml_fix as contoml
 
 
 def load(path):

@@ -30,5 +30,6 @@ setup(
 
     packages=packages,
 
-    install_requires=['contoml']
+    # Use this specific version of contoml because of monkey-patch bug fix.
+    install_requires=['contoml == 0.32']
 )
