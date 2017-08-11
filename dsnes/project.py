@@ -5,6 +5,7 @@
 import os
 
 from dsnes import contoml_fix as contoml
+from dsnes import cartridge
 
 
 def load(path):
@@ -20,7 +21,7 @@ class Project:
         assert os.path.isdir(path), "{} is not a directory".format(path)
         self.path = path
         self.config = self.load_config(os.path.join(path, "config.toml"))
-        self.cartridge = cartridge.cartridge()
+        self.cartridge = cartridge.Cartridge()
         self.cartridge.load(self)
 
     @staticmethod
