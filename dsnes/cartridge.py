@@ -32,7 +32,28 @@ class Cartridge:
 
             rom = memory.Memory()
             rom.allocate(open(path, 'rb'), size=size)
-            # TODO mapping etc.
+            for m in maps:
+                bank_lo = int(m["bank_low"], 0)
+                bank_hi = int(m["bank_high"], 0)
+                addr_lo = int(m["address_low"], 0)
+                addr_hi = int(m["address_high"], 0)
+                try:
+                    size = int(m["size"], 0)
+                except LookupError:
+                    size = 0
+                try:
+                    base = int(m["base"], 0)
+                except LookupError:
+                    base = 0
+                try:
+                    mask = int(m["mask"], 0)
+                except LookupError:
+                    mask = 0
+                # bank_lo, bank_hi, addr_lo, addr_hi, size=0, base=0, mask=0
+                project.bus.map(
+                    bank_lo, bank_hi, addr_lo, addr_hi,
+                    size, base, mask)
+
             return rom
 
     @staticmethod
