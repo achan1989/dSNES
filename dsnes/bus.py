@@ -4,6 +4,8 @@ See https://gitlab.com/higan/higan/tree/master
 Original code copyright byuu, and licensed under GPLv3 (see
 https://byuu.org/emulation/higan/licensing).
 """
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
 
 class Bus:
     """Provides the CPU with access to memory devices.

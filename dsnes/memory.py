@@ -1,3 +1,6 @@
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
+
 from dsnes import util
 
 class Memory:

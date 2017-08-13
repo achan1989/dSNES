@@ -1,4 +1,6 @@
 """Fixes for contoml."""
+# Copyright 2017 Adrian Chan
+# Licensed under GPLv3
 
 # We use contoml's high-level API unchanged.
 from contoml import loads, load, dumps, dump
