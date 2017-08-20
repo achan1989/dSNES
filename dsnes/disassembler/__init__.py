@@ -516,41 +516,24 @@ codes = {
 0xff: AbsLongX("sbc"), # ("sbc $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 }
 
-class Disassembler:
-    def __init__(self, project):
-        self.bus = project.bus
+def disassemble(addr, bus, e=None, m=None, x=None):
+    original_addr = addr
 
-    def disassemble(self, addr, e=None, m=None, x=None):
-        original_addr = addr
-        addr_str = "{:06x}".format(addr)
+    op = bus.read(addr); addr = increment_pc(addr)
+    op0 = bus.read(addr); addr = increment_pc(addr)
+    op1 = bus.read(addr); addr = increment_pc(addr)
+    op2 = bus.read(addr)
 
-        op = self.bus.read(addr); addr = increment_pc(addr)
-        op0 = self.bus.read(addr); addr = increment_pc(addr)
-        op1 = self.bus.read(addr); addr = increment_pc(addr)
-        op2 = self.bus.read(addr)
+    # We should be able to deal with this, but let's not bother unless
+    # we actually see such code in the wild.
+    if addr < original_addr:
+        raise NotImplementedError(
+            "Instruction at 0x{:06x} wraps off the end of this bank".format(
+                original_addr))
 
-        # We should be able to deal with this, but let's not bother unless
-        # we actually see such code in the wild.
-        if addr < original_addr:
-            raise NotImplementedError(
-                "Instruction at 0x{:06x} wraps off the end of this bank".format(
-                    original_addr))
-
-        op8 = op0
-        op16 = op0 | (op1 << 8)
-        op24 = op0 | (op1 << 8) | (op2 << 16)
-        if e is None or m is None:
-            a8 = "unknown"
-        else:
-            a8 = e or m
-        if e is None or x is None:
-            x8 = "unknown"
-        else:
-            x8 = e or x
-
-        info = codes[op]
-        asm_str = info.disassemble(original_addr, e, m, x, op0, op1, op2)
-        return asm_str
+    info = codes[op]
+    asm_str = info.disassemble(original_addr, e, m, x, op0, op1, op2)
+    return asm_str
 
 def increment_pc(addr):
     """Increment the PC as the CPU would when executing instructions.
