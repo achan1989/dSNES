@@ -7,95 +7,174 @@ https://byuu.org/emulation/higan/licensing).
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
+import dsnes
+from dsnes import util
+
 
 class InstructionType:
     def __init__(self, mnemonic, default_comment=None):
         self.mnemonic = mnemonic
         self.default_comment = default_comment
 
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        raise NotImplementedError(
+            "Not implemented for {}".format(self.__class__.__name__))
+
 # Basic addressing modes.
 
 class Immediate8(InstructionType):
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} #${:02x}".format(self.mnemonic, op8)
 
 class ImmediateAmbiguous(InstructionType):
     def __init__(self, mnemonic, selector, default_comment=None):
+        assert selector in ("a8", "x8")
         super().__init__(mnemonic, default_comment)
         self.selector = selector
 
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        op16 = op0 | (op1 << 8)
+        a8 = e or m
+        x8 = e or x
+
+        if self.selector == "a8":
+            if a8 is None:
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or m flags")
+            if a8:
+                return "{} #${:02x}".format(self.mnemonic, op8)
+            else:
+                return "{} #${:04x}".format(self.mnemonic, op16)
+
+        else:
+            if x8 is None:
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or x flags")
+            if x8:
+                return "{} #${:02x}".format(self.mnemonic, op8)
+            else:
+                return "{} #${:04x}".format(self.mnemonic, op16)
+
 class Absolute(InstructionType):
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op16 = op0 | (op1 << 8)
+        return "{} ${:04x}     [DBR:{:04x}]".format(self.mnemonic, op16, op16)
 
 class AbsLong(InstructionType):
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op24 = op0 | (op1 << 8) | (op2 << 16)
+        return "{} ${:06x}".format(self.mnemonic, op24)
 
 class AbsLongX(InstructionType):
     """Absolute long, indexed by X."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op24 = op0 | (op1 << 8) | (op2 << 16)
+        return "{} ${:06x},x [{:06x}]+x".format(self.mnemonic, op24, op24)
 
 class AbsoluteX(InstructionType):
     """Absolute, indexed by X."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op16 = op0 | (op1 << 8)
+        return "{} ${:04x},x   [DBR:{:04X}]+x".format(self.mnemonic, op16, op16)
 
 class AbsoluteY(InstructionType):
     """Absolute, indexed by Y."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op16 = op0 | (op1 << 8)
+        return "{} ${:04x},y   [DBR:{:04x}]+y".format(self.mnemonic, op16, op16)
 
 class AbsXInd(InstructionType):
     """(Absolute, indexed by X) indirect."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op16 = op0 | (op1 << 8)
+        return "{} (${:04x},x) [PBR:{:04x}+x]".format(self.mnemonic, op16, op16)
 
 class DirectPage(InstructionType):
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} ${:02x}        [00:DPR+{:02x}]".format(
+            self.mnemonic, op8, op8)
 
 class DirectPageX(InstructionType):
     """Direct Page, indexed by X."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} ${:02x},x      [00:DPR+{:02x}]+x".format(
+            self.mnemonic, op8, op8)
 
 class DirectPageY(InstructionType):
     """Direct Page, indexed by Y."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} ${:02x},y      [00:DPR+{:02x}]+y".format(
+            self.mnemonic, op8, op8)
 
 class DPInd(InstructionType):
     """Direct Page indirect."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} (${:02x})      [DBR:(00:DPR+{:02x})]".format(
+            self.mnemonic, op8, op8)
 
 class DPIndLong(InstructionType):
     """Direct Page indirect, long."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} [${:02x}]     [(00:DPR+{:02x})]".format(
+            self.mnemonic, op8, op8)
 
 class DPIndY(InstructionType):
     """(Direct Page indirect), indexed by Y."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} (${:02x}),y   [DBR:(00:DPR+{:02x})]+y".format(
+            self.mnemonic, op8, op8)
 
 class DPIndLongY(InstructionType):
     """(Direct Page indirect) long, indexed by Y."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} [${:02x}],y   [(00:DPR+{:02x})]+y".format(
+            self.mnemonic, op8, op8)
 
 class DPXInd(InstructionType):
     """(Direct Page, indexed by X) indirect."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} (${:02x},x)   [DBR:(00:DPR+{:02x}+x)]".format(
+            self.mnemonic, op8, op8)
 
 class BlockMove(InstructionType):
     """Move a block of memory."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        return "{} ${:02x},${:02x}".format(self.mnemonic, op1, op0)
+        # TODO: could put additional info into this dasm.
 
 class Implied(InstructionType):
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        return self.mnemonic
 
 class Accumulator(Implied):
+    """Currently as Implied, may need to do special case later."""
     pass
 
 class Stack(Implied):
+    """Currently as Implied, may need to do special case later."""
     pass
 
 class StackRelative(InstructionType):
     """Stack pointer + offset."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} ${:02x},s      [00:SP+{:02x}]".format(
+            self.mnemonic, op8, op8)
 
 class StackRelativeIndY(InstructionType):
     """(Stack pointer + offset) indirect, indexed by Y."""
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        return "{} (${:02x},s),y [DBR:(SP+{:02x})]+y".format(
+            self.mnemonic, op8, op8)
 
 class PushEffectiveAbs(Absolute):
     """Push 16b of data to stack."""
@@ -106,8 +185,10 @@ class PushEffectiveInd(DPInd):
     pass
 
 class PushEffectiveRel(InstructionType):
-    """Push 16b at (PC + offset) to stack."""
-    pass
+    """Push 16b = (PC + offset) to stack."""
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op16 = op0 | (op1 << 8)
+        return "{} ${:04x}      [PC+{:04x}]".format(self.mnemonic, op16, op16)
 
 # Special cases, or derived from basic addressing modes.
 
@@ -147,13 +228,26 @@ class JumpAbsLong(AbsLong):
     pass
 
 class BranchCond(InstructionType):
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        op16 = op0 | (op1 << 8)
+        op24 = op0 | (op1 << 8) | (op2 << 16)
+        TODO
 
 class BranchAlways(InstructionType):
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        target = (addr & 0xff0000) + (((addr & 0xffff) + 2) & 0xffff)
+        target += util.s8_to_num(op8)
+        return "{} ${:04x}     [{:06x}]".format(
+            self.mnemonic, target & 0xFFFF, target)
 
 class BranchAlwaysLong(InstructionType):
-    pass
+    def disassemble(self, addr, e, m, x, op0, op1, op2):
+        op8 = op0
+        op16 = op0 | (op1 << 8)
+        op24 = op0 | (op1 << 8) | (op2 << 16)
+        TODO
 
 class Interrupt(InstructionType):
     pass
@@ -454,7 +548,9 @@ class Disassembler:
         else:
             x8 = e or x
 
-        # TODO
+        info = codes[op]
+        asm_str = info.disassemble(original_addr, e, m, x, op0, op1, op2)
+        return asm_str
 
 def increment_pc(addr):
     """Increment the PC as the CPU would when executing instructions.

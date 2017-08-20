@@ -19,3 +19,7 @@ def tc_to_int(value):
 
 def is_filelike(obj):
     return issubclass(type(obj), io.IOBase)
+
+def s8_to_num(value):
+    b = value.to_bytes(1, "little")
+    return int.from_bytes(b, "little", signed=True)
