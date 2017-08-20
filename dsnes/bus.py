@@ -7,6 +7,8 @@ https://byuu.org/emulation/higan/licensing).
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
+import dsnes
+
 class Bus:
     """Provides the CPU with access to memory devices.
 
@@ -26,6 +28,8 @@ class Bus:
 
     def map(self, bank_lo, bank_hi, addr_lo, addr_hi, size=0, base=0,
             mask=0, read_fn=None, write_fn=None):
+        assert read_fn is not None
+        assert write_fn is not None
         idx = self.map_count + 1
         # Not strictly necessary, but I want to know if I accidentally make a
         # stupid number of mappings.
@@ -47,6 +51,24 @@ class Bus:
         self.reader[idx] = read_fn
         self.writer[idx] = write_fn
         self.map_count = idx
+
+    def read(self, addr):
+        try:
+            map_id = self.lookup[addr]
+            reader = self.reader[map_id]
+            dev_addr = self.target[addr]
+        except LookupError as ex:
+            raise dsnes.UnmappedMemoryAccess(addr) from ex
+        return reader(dev_addr)
+
+    def write(self, addr, data):
+        try:
+            map_id = self.lookup[addr]
+            writer = self.writer[map_id]
+            dev_addr = self.target[addr]
+        except LookupError as ex:
+            raise dsnes.UnmappedMemoryAccess(addr) from ex
+        writer(dev_addr, data)
 
     @staticmethod
     def reduce(addr, mask):

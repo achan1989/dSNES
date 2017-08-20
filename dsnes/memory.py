@@ -20,3 +20,10 @@ class Memory:
 
         else:
             raise TypeError("source is an unsupported type")
+
+    def read(self, addr):
+        assert addr < self.size
+        return self.data[addr]
+
+    def write(self, addr, data):
+        raise TypeError("Can't write to ROM at ${:06x}".format(addr))

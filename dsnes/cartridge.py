@@ -49,10 +49,9 @@ class Cartridge:
                     mask = int(m["mask"], 0)
                 except LookupError:
                     mask = 0
-                # bank_lo, bank_hi, addr_lo, addr_hi, size=0, base=0, mask=0
                 project.bus.map(
                     bank_lo, bank_hi, addr_lo, addr_hi,
-                    size, base, mask)
+                    size, base, mask, read_fn=rom.read, write_fn=rom.write)
 
             return rom
 
