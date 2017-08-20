@@ -2,6 +2,7 @@
 # Licensed under GPLv3
 
 from dsnes import project
+from dsnes.disassembler import disassemble
 
 class UnmappedMemoryAccess(ValueError):
     pass
