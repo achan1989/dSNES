@@ -7,23 +7,48 @@ https://byuu.org/emulation/higan/licensing).
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
+import collections
+
 import dsnes
 from dsnes import util
 
 
+Disassembly = collections.namedtuple("Disassembly", ["asm_str", "next_addr"])
+
+
 class InstructionType:
+    nbytes = None
+
     def __init__(self, mnemonic, default_comment=None):
         self.mnemonic = mnemonic
         self.default_comment = default_comment
 
     def disassemble(self, addr, e, m, x, op0, op1, op2):
+        return Disassembly(
+            asm_str=self.asm_str(addr, e, m, x, op0, op1, op2),
+            next_addr=self.next_instruction_addr(addr, e, m, x, op0, op1, op2)
+        )
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         raise NotImplementedError(
             "Not implemented for {}".format(self.__class__.__name__))
+
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        pbr = addr & 0xFF0000
+        a = addr & 0xFFFF
+        a = (a + self.nbytes) & 0xFFFF
+        return pbr + a
 
 # Basic addressing modes.
 
 class Immediate8(InstructionType):
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} #${:02x}".format(self.mnemonic, op8)
 
@@ -33,7 +58,7 @@ class ImmediateAmbiguous(InstructionType):
         super().__init__(mnemonic, default_comment)
         self.selector = selector
 
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         op16 = op0 | (op1 << 8)
         a8 = e or m
@@ -56,102 +81,134 @@ class ImmediateAmbiguous(InstructionType):
                 return "{} #${:04x}".format(self.mnemonic, op16)
 
 class Absolute(InstructionType):
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 3
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x}     [DBR:{:04x}]".format(self.mnemonic, op16, op16)
 
 class AbsLong(InstructionType):
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 4
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
         return "{} ${:06x}".format(self.mnemonic, op24)
 
 class AbsLongX(InstructionType):
     """Absolute long, indexed by X."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 4
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
         return "{} ${:06x},x [{:06x}]+x".format(self.mnemonic, op24, op24)
 
 class AbsoluteX(InstructionType):
     """Absolute, indexed by X."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 3
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x},x   [DBR:{:04X}]+x".format(self.mnemonic, op16, op16)
 
 class AbsoluteY(InstructionType):
     """Absolute, indexed by Y."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 3
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x},y   [DBR:{:04x}]+y".format(self.mnemonic, op16, op16)
 
 class AbsXInd(InstructionType):
     """(Absolute, indexed by X) indirect."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 3
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} (${:04x},x) [PBR:{:04x}+x]".format(self.mnemonic, op16, op16)
 
 class DirectPage(InstructionType):
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} ${:02x}        [00:DPR+{:02x}]".format(
             self.mnemonic, op8, op8)
 
 class DirectPageX(InstructionType):
     """Direct Page, indexed by X."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} ${:02x},x      [00:DPR+{:02x}]+x".format(
             self.mnemonic, op8, op8)
 
 class DirectPageY(InstructionType):
     """Direct Page, indexed by Y."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} ${:02x},y      [00:DPR+{:02x}]+y".format(
             self.mnemonic, op8, op8)
 
 class DPInd(InstructionType):
     """Direct Page indirect."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} (${:02x})      [DBR:(00:DPR+{:02x})]".format(
             self.mnemonic, op8, op8)
 
 class DPIndLong(InstructionType):
     """Direct Page indirect, long."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} [${:02x}]     [(00:DPR+{:02x})]".format(
             self.mnemonic, op8, op8)
 
 class DPIndY(InstructionType):
     """(Direct Page indirect), indexed by Y."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} (${:02x}),y   [DBR:(00:DPR+{:02x})]+y".format(
             self.mnemonic, op8, op8)
 
 class DPIndLongY(InstructionType):
     """(Direct Page indirect) long, indexed by Y."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} [${:02x}],y   [(00:DPR+{:02x})]+y".format(
             self.mnemonic, op8, op8)
 
 class DPXInd(InstructionType):
     """(Direct Page, indexed by X) indirect."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} (${:02x},x)   [DBR:(00:DPR+{:02x}+x)]".format(
             self.mnemonic, op8, op8)
 
 class BlockMove(InstructionType):
     """Move a block of memory."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 3
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         return "{} ${:02x},${:02x}".format(self.mnemonic, op1, op0)
         # TODO: could put additional info into this dasm.
 
 class Implied(InstructionType):
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 1
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         return self.mnemonic
 
 class Accumulator(Implied):
@@ -164,14 +221,18 @@ class Stack(Implied):
 
 class StackRelative(InstructionType):
     """Stack pointer + offset."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} ${:02x},s      [00:SP+{:02x}]".format(
             self.mnemonic, op8, op8)
 
 class StackRelativeIndY(InstructionType):
     """(Stack pointer + offset) indirect, indexed by Y."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         return "{} (${:02x},s),y [DBR:(SP+{:02x})]+y".format(
             self.mnemonic, op8, op8)
@@ -186,75 +247,176 @@ class PushEffectiveInd(DPInd):
 
 class PushEffectiveRel(InstructionType):
     """Push 16b = (PC + offset) to stack."""
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 3
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x}      [PC+{:04x}]".format(self.mnemonic, op16, op16)
 
 # Special cases, or derived from basic addressing modes.
 
 class CallAbs(Absolute):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class CallAbsLong(AbsLong):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class CallAbsXInd(AbsXInd):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class ReturnInt(Stack):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class ReturnSub(Stack):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class ReturnSubLong(Stack):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class JumpAbs(Absolute):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class JumpAbsInd(InstructionType):
     """Jump to 16b address in (bank 0 + offset) indirect."""
-    pass
+    nbytes = 3
+
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class JumpAbsIndLong(InstructionType):
     """Jump to 24b address in (bank 0 + offset) indirect."""
-    pass
+    nbytes = 3
+
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class JumpAbsXInd(AbsXInd):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class JumpAbsLong(AbsLong):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Jump to the 24b address provided.
+        op24 = op0 | (op1 << 8) | (op2 << 16)
+        return op24
 
 class BranchCond(InstructionType):
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         op16 = op0 | (op1 << 8)
         op24 = op0 | (op1 << 8) | (op2 << 16)
-        TODO
+        raise NotImplementedError()
+
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class BranchAlways(InstructionType):
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 2
+
+    @classmethod
+    def calc_target(cls, addr, operand):
+        assert cls.nbytes is not None
+        offset = util.s8_to_num(operand)
+        pbr = addr & 0xff0000
+        pc = (((addr & 0xffff) + cls.nbytes + offset) & 0xffff)
+        target = pbr + pc
+        return target
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
-        target = (addr & 0xff0000) + (((addr & 0xffff) + 2) & 0xffff)
-        target += util.s8_to_num(op8)
+        target = self.calc_target(addr, op8)
         return "{} ${:04x}     [{:06x}]".format(
             self.mnemonic, target & 0xFFFF, target)
 
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        op8 = op0
+        target = self.calc_target(addr, op8)
+        return target
+
 class BranchAlwaysLong(InstructionType):
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    nbytes = 3
+
+    def asm_str(self, addr, e, m, x, op0, op1, op2):
         op8 = op0
         op16 = op0 | (op1 << 8)
         op24 = op0 | (op1 << 8) | (op2 << 16)
-        TODO
+        raise NotImplementedError()
+
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class Interrupt(InstructionType):
-    pass
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # Most instructions can't cross bank boundaries. If the PC increments
+        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        assert self.nbytes is not None
+        raise NotImplementedError()
 
 class RFU(Implied):
     """Reserved for future use."""
-    pass
+    nbytes = 2
 
 
 codes = {
@@ -484,7 +646,7 @@ codes = {
 0xdf: AbsLongX("cmp"), # ("cmp $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 0xe0: ImmediateAmbiguous("cpx", "x8"), # (     ("cpx #$%.2x              ", op8) if x8 else ("cpx #$%.4x            ", op16)),
 0xe1: DPXInd("sbc"), # ("sbc ($%.2x,x)   [%.6x]", op8, decode(OPTYPE_IDPX, op8)),
-0xe2: Immediate8("sep", default_comment="Set status bits"), # ("sep #$%.2x              ", op8),
+0xe2: Immediate8("sep", default_comment="Set status bits"), # manual instruction list has a misprint, it's really sep ("sep #$%.2x              ", op8),
 0xe3: StackRelative("sbc"), # ("sbc $%.2x,s     [%.6x]", op8, decode(OPTYPE_SR, op8)),
 0xe4: DirectPage("cpx"), # manual instruction list has a misprint, it's really cpx. ("cpx $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
 0xe5: DirectPage("sbc"), # ("sbc $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
@@ -532,8 +694,8 @@ def disassemble(addr, bus, e=None, m=None, x=None):
                 original_addr))
 
     info = codes[op]
-    asm_str = info.disassemble(original_addr, e, m, x, op0, op1, op2)
-    return asm_str
+    disassembly = info.disassemble(original_addr, e, m, x, op0, op1, op2)
+    return disassembly
 
 def increment_pc(addr):
     """Increment the PC as the CPU would when executing instructions.
