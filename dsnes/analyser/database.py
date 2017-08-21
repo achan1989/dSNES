@@ -59,7 +59,7 @@ class Database:
         self.state_cache = state_cache = {}
         for key, value in self.data["states"].items():
             addr = parse_address_key(key)
-            state = dsnes.Analyser.parse_state(value)
+            state = dsnes.State.parse(value)
             assert state is not None
             state_cache[addr] = state
 

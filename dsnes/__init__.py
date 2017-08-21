@@ -6,6 +6,7 @@ from dsnes.analyser import Analyser, database
 from dsnes.bus import Bus
 from dsnes.cartridge import Cartridge
 from dsnes.disassembler import disassemble
+from dsnes.cpustate import State
 
 class UnmappedMemoryAccess(ValueError):
     pass
