@@ -25,18 +25,18 @@ class InstructionType:
         self.mnemonic = mnemonic
         self.default_comment = default_comment
 
-    def disassemble(self, addr, e, m, x, op0, op1, op2):
+    def disassemble(self, addr, state, op0, op1, op2):
         return Disassembly(
-            asm_str=self.asm_str(addr, e, m, x, op0, op1, op2),
-            next_addr=self.next_instruction_addr(addr, e, m, x, op0, op1, op2),
-            new_state=self.new_state(addr, e, m, x, op0, op1, op2)
+            asm_str=self.asm_str(addr, state, op0, op1, op2),
+            next_addr=self.next_instruction_addr(addr, state, op0, op1, op2),
+            new_state=self.new_state(addr, state.clone(), op0, op1, op2)
         )
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         raise NotImplementedError(
             "Not implemented for {}".format(self.__class__.__name__))
 
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -46,20 +46,23 @@ class InstructionType:
         a = (a + self.nbytes) & 0xFFFF
         return pbr + a
 
-    def new_state(self, addr, e, m, x, op0, op1, op2):
-        """Get the state of the e/m/x bits after executing the instruction.
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the state of the CPU flags after executing the instruction.
 
-        Return a tuple of the new (e, m, x) values.
+        Return a modified State.
         """
-        # Most instructions don't affect state.
-        return (e, m, x)
+        # Most instructions leave e/m/x unchanged.
+        # Most instructions change c in ways we can't predict and don't care
+        # about.
+        state.c = None
+        return state
 
 # Basic addressing modes.
 
 class Immediate8(InstructionType):
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} #${:02x}".format(self.mnemonic, op8)
 
@@ -69,11 +72,11 @@ class ImmediateAmbiguous(InstructionType):
         super().__init__(mnemonic, default_comment)
         self.selector = selector
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         op16 = op0 | (op1 << 8)
-        a8 = e or m
-        x8 = e or x
+        a8 = state.e or state.m
+        x8 = state.e or state.x
 
         if self.selector == "a8":
             if a8 is None:
@@ -91,13 +94,13 @@ class ImmediateAmbiguous(InstructionType):
             else:
                 return "{} #${:04x}".format(self.mnemonic, op16)
 
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # The instruction length depends on the processor flags e/m/x.
         # This instruction also can't cross bank boundaries. If the PC
         # increments past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        a8 = e or m
-        x8 = e or x
+        a8 = state.e or state.m
+        x8 = state.e or state.x
 
         if self.selector == "a8":
             if a8 is None:
@@ -123,14 +126,14 @@ class ImmediateAmbiguous(InstructionType):
 class Absolute(InstructionType):
     nbytes = 3
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x}     [DBR:{:04x}]".format(self.mnemonic, op16, op16)
 
 class AbsLong(InstructionType):
     nbytes = 4
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
         return "{} ${:06x}".format(self.mnemonic, op24)
 
@@ -138,7 +141,7 @@ class AbsLongX(InstructionType):
     """Absolute long, indexed by X."""
     nbytes = 4
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
         return "{} ${:06x},x [{:06x}]+x".format(self.mnemonic, op24, op24)
 
@@ -146,7 +149,7 @@ class AbsoluteX(InstructionType):
     """Absolute, indexed by X."""
     nbytes = 3
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x},x   [DBR:{:04X}]+x".format(self.mnemonic, op16, op16)
 
@@ -154,7 +157,7 @@ class AbsoluteY(InstructionType):
     """Absolute, indexed by Y."""
     nbytes = 3
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x},y   [DBR:{:04x}]+y".format(self.mnemonic, op16, op16)
 
@@ -162,14 +165,14 @@ class AbsXInd(InstructionType):
     """(Absolute, indexed by X) indirect."""
     nbytes = 3
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} (${:04x},x) [PBR:{:04x}+x]".format(self.mnemonic, op16, op16)
 
 class DirectPage(InstructionType):
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} ${:02x}        [00:DPR+{:02x}]".format(
             self.mnemonic, op8, op8)
@@ -178,7 +181,7 @@ class DirectPageX(InstructionType):
     """Direct Page, indexed by X."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} ${:02x},x      [00:DPR+{:02x}]+x".format(
             self.mnemonic, op8, op8)
@@ -187,7 +190,7 @@ class DirectPageY(InstructionType):
     """Direct Page, indexed by Y."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} ${:02x},y      [00:DPR+{:02x}]+y".format(
             self.mnemonic, op8, op8)
@@ -196,7 +199,7 @@ class DPInd(InstructionType):
     """Direct Page indirect."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} (${:02x})      [DBR:(00:DPR+{:02x})]".format(
             self.mnemonic, op8, op8)
@@ -205,7 +208,7 @@ class DPIndLong(InstructionType):
     """Direct Page indirect, long."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} [${:02x}]     [(00:DPR+{:02x})]".format(
             self.mnemonic, op8, op8)
@@ -214,7 +217,7 @@ class DPIndY(InstructionType):
     """(Direct Page indirect), indexed by Y."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} (${:02x}),y   [DBR:(00:DPR+{:02x})]+y".format(
             self.mnemonic, op8, op8)
@@ -223,7 +226,7 @@ class DPIndLongY(InstructionType):
     """(Direct Page indirect) long, indexed by Y."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} [${:02x}],y   [(00:DPR+{:02x})]+y".format(
             self.mnemonic, op8, op8)
@@ -232,7 +235,7 @@ class DPXInd(InstructionType):
     """(Direct Page, indexed by X) indirect."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} (${:02x},x)   [DBR:(00:DPR+{:02x}+x)]".format(
             self.mnemonic, op8, op8)
@@ -241,14 +244,14 @@ class BlockMove(InstructionType):
     """Move a block of memory."""
     nbytes = 3
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         return "{} ${:02x},${:02x}".format(self.mnemonic, op1, op0)
         # TODO: could put additional info into this dasm.
 
 class Implied(InstructionType):
     nbytes = 1
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         return self.mnemonic
 
 class Accumulator(Implied):
@@ -263,7 +266,7 @@ class StackRelative(InstructionType):
     """Stack pointer + offset."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} ${:02x},s      [00:SP+{:02x}]".format(
             self.mnemonic, op8, op8)
@@ -272,7 +275,7 @@ class StackRelativeIndY(InstructionType):
     """(Stack pointer + offset) indirect, indexed by Y."""
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} (${:02x},s),y [DBR:(SP+{:02x})]+y".format(
             self.mnemonic, op8, op8)
@@ -289,14 +292,14 @@ class PushEffectiveRel(InstructionType):
     """Push 16b = (PC + offset) to stack."""
     nbytes = 3
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x}      [PC+{:04x}]".format(self.mnemonic, op16, op16)
 
 # Special cases, or derived from basic addressing modes.
 
 class CallAbs(Absolute):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -304,7 +307,7 @@ class CallAbs(Absolute):
         raise NotImplementedError()
 
 class CallAbsLong(AbsLong):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -312,7 +315,7 @@ class CallAbsLong(AbsLong):
         raise NotImplementedError()
 
 class CallAbsXInd(AbsXInd):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -320,7 +323,7 @@ class CallAbsXInd(AbsXInd):
         raise NotImplementedError()
 
 class ReturnInt(Stack):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -328,7 +331,7 @@ class ReturnInt(Stack):
         raise NotImplementedError()
 
 class ReturnSub(Stack):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -336,7 +339,7 @@ class ReturnSub(Stack):
         raise NotImplementedError()
 
 class ReturnSubLong(Stack):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -344,7 +347,7 @@ class ReturnSubLong(Stack):
         raise NotImplementedError()
 
 class JumpAbs(Absolute):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -355,7 +358,7 @@ class JumpAbsInd(InstructionType):
     """Jump to 16b address in (bank 0 + offset) indirect."""
     nbytes = 3
 
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -366,7 +369,7 @@ class JumpAbsIndLong(InstructionType):
     """Jump to 24b address in (bank 0 + offset) indirect."""
     nbytes = 3
 
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -374,7 +377,7 @@ class JumpAbsIndLong(InstructionType):
         raise NotImplementedError()
 
 class JumpAbsXInd(AbsXInd):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -382,7 +385,7 @@ class JumpAbsXInd(AbsXInd):
         raise NotImplementedError()
 
 class JumpAbsLong(AbsLong):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Jump to the 24b address provided.
         op24 = op0 | (op1 << 8) | (op2 << 16)
@@ -391,13 +394,13 @@ class JumpAbsLong(AbsLong):
 class BranchCond(InstructionType):
     nbytes = 2
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         op16 = op0 | (op1 << 8)
         op24 = op0 | (op1 << 8) | (op2 << 16)
         raise NotImplementedError()
 
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -416,13 +419,13 @@ class BranchAlways(InstructionType):
         target = pbr + pc
         return target
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         target = self.calc_target(addr, op8)
         return "{} ${:04x}     [{:06x}]".format(
             self.mnemonic, target & 0xFFFF, target)
 
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -433,13 +436,13 @@ class BranchAlways(InstructionType):
 class BranchAlwaysLong(InstructionType):
     nbytes = 3
 
-    def asm_str(self, addr, e, m, x, op0, op1, op2):
+    def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         op16 = op0 | (op1 << 8)
         op24 = op0 | (op1 << 8) | (op2 << 16)
         raise NotImplementedError()
 
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -447,7 +450,7 @@ class BranchAlwaysLong(InstructionType):
         raise NotImplementedError()
 
 class Interrupt(InstructionType):
-    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+    def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
@@ -460,24 +463,23 @@ class RFU(Implied):
 
 class REP(Immediate8):
     """Special handling of the REP opcode."""
-    def new_state(self, addr, e, m, x, op0, op1, op2):
-        """Get the state of the e/m/x bits after executing the instruction.
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the state of the CPU flags after executing the instruction.
 
-        Return a tuple of the new (e, m, x) values.
+        Return a modified State.
         """
         op8 = op0
-        new_m = m
-        new_x = x
         clear_m = bool(op8 & 0b00100000)
         clear_x = bool(op8 & 0b00010000)
+        clear_c = bool(op8 & 0b00000001)
 
         # Native mode.
-        if e is False:
+        if state.e is False:
             # Clear flags as specified.
             pass
 
         # Emulation mode.
-        elif e is True:
+        elif state.e is True:
             # Flags cannot be cleared.
             clear_m = False
             clear_x = False
@@ -490,32 +492,33 @@ class REP(Immediate8):
                 raise dsnes.AmbiguousDisassembly(self.mnemonic, "e flag")
 
         if clear_m:
-            new_m = False
+            state.m = False
         if clear_x:
-            new_x = False
+            state.x = False
+        if clear_c:
+            state.c = False
 
-        return (e, new_m, new_x)
+        return state
 
 class SEP(Immediate8):
     """Special handling of the SEP opcode."""
-    def new_state(self, addr, e, m, x, op0, op1, op2):
-        """Get the state of the e/m/x bits after executing the instruction.
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the state of the CPU flags after executing the instruction.
 
-        Return a tuple of the new (e, m, x) values.
+        Return a modified State.
         """
         op8 = op0
-        new_m = m
-        new_x = x
         set_m = bool(op8 & 0b00100000)
         set_x = bool(op8 & 0b00010000)
+        set_c = bool(op8 & 0b00000001)
 
         # Native mode.
-        if e is False:
+        if state.e is False:
             # Set flags as specified.
             pass
 
         # Emulation mode.
-        elif e is True:
+        elif state.e is True:
             # Flags cannot be set.
             set_m = False
             set_x = False
@@ -528,50 +531,69 @@ class SEP(Immediate8):
                 raise dsnes.AmbiguousDisassembly(self.mnemonic, "e flag")
 
         if set_m:
-            new_m = True
+            state.m = True
         if set_x:
-            new_x = True
+            state.x = True
+        if set_c:
+            state.c = True
 
-        return (e, new_m, new_x)
+        return state
 
 class PLP(Stack):
     """Special handling of the PLP opcode."""
-    def new_state(self, addr, e, m, x, op0, op1, op2):
-        """Get the state of the e/m/x bits after executing the instruction.
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the state of the CPU flags after executing the instruction.
 
-        Return a tuple of the new (e, m, x) values.
+        Return a modified State.
         """
         op8 = op0
-        new_m = m
-        new_x = x
 
         # Native mode.
-        if e is False:
+        if state.e is False:
             # Flags are replaced with unknown values.
-            new_m = None
-            new_x = None
+            state.m = None
+            state.x = None
+            state.c = None
 
         # Emulation mode.
-        elif e is True:
-            # Flags cannot be changed.
-            pass
+        elif state.e is True:
+            state.c = None
+            # m/x cannot be changed.
 
         # Unknown native/emulation mode.
         else:
             raise dsnes.AmbiguousDisassembly(self.mnemonic, "e flag")
 
-        return (e, new_m, new_x)
+        return state
 
 class XCE(Implied):
     """Special handling of the XCE opcode."""
-    def new_state(self, addr, e, m, x, op0, op1, op2):
-        """Get the state of the e/m/x bits after executing the instruction.
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the state of the CPU flags after executing the instruction.
 
-        Return a tuple of the new (e, m, x) values.
+        Return a modified State.
         """
-        # We currently have no way to tell what happens.
-        # TODO: partial simulation of carry flag?
-        return (None, None, None)
+        raise NotImplementedError()
+
+class SEC(Implied):
+    """Special handling of the SEC opcode."""
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the state of the CPU flags after executing the instruction.
+
+        Return a modified State.
+        """
+        state.c = True
+        return state
+
+class CLC(Implied):
+    """Special handling of the CLC opcode."""
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the state of the CPU flags after executing the instruction.
+
+        Return a modified State.
+        """
+        state.c = False
+        return state
 
 
 codes = {
@@ -599,7 +621,7 @@ codes = {
 0x15: DirectPageX("ora"), # ("ora $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0x16: DirectPageX("asl"), # ("asl $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0x17: DPIndLongY("ora"), # ("ora [$%.2x],y   [%.6x]", op8, decode(OPTYPE_ILDPY, op8)),
-0x18: Implied("clc"), # ("clc                   "),
+0x18: CLC("clc"), # ("clc                   "),
 0x19: AbsoluteY("ora"), # ("ora $%.4x,y   [%.6x]", op16, decode(OPTYPE_ADDRY, op16)),
 0x1a: Accumulator("inc"), # ("inc                   "),
 0x1b: Implied("tcs", default_comment="Transfer 16b acc to SP"), # ("tcs                   "),
@@ -631,7 +653,7 @@ codes = {
 0x35: DirectPageX("and"), # ("and $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0x36: DirectPageX("rol"), # ("rol $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0x37: DPIndLongY("and"), # ("and [$%.2x],y   [%.6x]", op8, decode(OPTYPE_ILDPY, op8)),
-0x38: Implied("sec"), # ("sec                   "),
+0x38: SEC("sec"), # ("sec                   "),
 0x39: AbsoluteY("and"), # ("and $%.4x,y   [%.6x]", op16, decode(OPTYPE_ADDRY, op16)),
 0x3a: Accumulator("dec"), # ("dec                   "),
 0x3b: Implied("tsc", default_comment="Transfer SP to 16b acc"), # ("tsc                   "),
@@ -833,7 +855,7 @@ codes = {
 0xff: AbsLongX("sbc"), # ("sbc $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 }
 
-def disassemble(addr, bus, e=None, m=None, x=None):
+def disassemble(addr, bus, state):
     original_addr = addr
 
     op = bus.read(addr); addr = increment_pc(addr)
@@ -849,7 +871,7 @@ def disassemble(addr, bus, e=None, m=None, x=None):
                 original_addr))
 
     info = codes[op]
-    disassembly = info.disassemble(original_addr, e, m, x, op0, op1, op2)
+    disassembly = info.disassemble(original_addr, state, op0, op1, op2)
     return disassembly
 
 def increment_pc(addr):
