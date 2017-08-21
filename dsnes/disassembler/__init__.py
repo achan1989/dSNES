@@ -80,6 +80,35 @@ class ImmediateAmbiguous(InstructionType):
             else:
                 return "{} #${:04x}".format(self.mnemonic, op16)
 
+    def next_instruction_addr(self, addr, e, m, x, op0, op1, op2):
+        """Get the PBR:PC value for the next instruction."""
+        # The instruction length depends on the processor flags e/m/x.
+        # This instruction also can't cross bank boundaries. If the PC
+        # increments past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        a8 = e or m
+        x8 = e or x
+
+        if self.selector == "a8":
+            if a8 is None:
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or m flags")
+            if a8:
+                nbytes = 2
+            else:
+                nbytes = 3
+
+        else:
+            if x8 is None:
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or x flags")
+            if x8:
+                nbytes = 2
+            else:
+                nbytes = 3
+
+        pbr = addr & 0xFF0000
+        a = addr & 0xFFFF
+        a = (a + nbytes) & 0xFFFF
+        return pbr + a
+
 class Absolute(InstructionType):
     nbytes = 3
 
