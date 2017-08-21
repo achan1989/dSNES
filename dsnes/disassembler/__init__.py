@@ -13,7 +13,9 @@ import dsnes
 from dsnes import util
 
 
-Disassembly = collections.namedtuple("Disassembly", ["asm_str", "next_addr"])
+Disassembly = collections.namedtuple(
+    "Disassembly",
+    ["asm_str", "next_addr", "new_state"])
 
 
 class InstructionType:
@@ -26,7 +28,8 @@ class InstructionType:
     def disassemble(self, addr, e, m, x, op0, op1, op2):
         return Disassembly(
             asm_str=self.asm_str(addr, e, m, x, op0, op1, op2),
-            next_addr=self.next_instruction_addr(addr, e, m, x, op0, op1, op2)
+            next_addr=self.next_instruction_addr(addr, e, m, x, op0, op1, op2),
+            new_state=self.new_state(addr, e, m, x, op0, op1, op2)
         )
 
     def asm_str(self, addr, e, m, x, op0, op1, op2):
@@ -42,6 +45,14 @@ class InstructionType:
         a = addr & 0xFFFF
         a = (a + self.nbytes) & 0xFFFF
         return pbr + a
+
+    def new_state(self, addr, e, m, x, op0, op1, op2):
+        """Get the state of the e/m/x bits after executing the instruction.
+
+        Return a tuple of the new (e, m, x) values.
+        """
+        # Most instructions don't affect state.
+        return (e, m, x)
 
 # Basic addressing modes.
 
@@ -447,6 +458,121 @@ class RFU(Implied):
     """Reserved for future use."""
     nbytes = 2
 
+class REP(Immediate8):
+    """Special handling of the REP opcode."""
+    def new_state(self, addr, e, m, x, op0, op1, op2):
+        """Get the state of the e/m/x bits after executing the instruction.
+
+        Return a tuple of the new (e, m, x) values.
+        """
+        op8 = op0
+        new_m = m
+        new_x = x
+        clear_m = bool(op8 & 0b00100000)
+        clear_x = bool(op8 & 0b00010000)
+
+        # Native mode.
+        if e is False:
+            # Clear flags as specified.
+            pass
+
+        # Emulation mode.
+        elif e is True:
+            # Flags cannot be cleared.
+            clear_m = False
+            clear_x = False
+
+        # Unknown native/emulation mode.
+        else:
+            # If the m or x bits are unaltered then it doesn't matter.
+            # If they are being cleared then we have a problem.
+            if clear_m or clear_x:
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e flag")
+
+        if clear_m:
+            new_m = False
+        if clear_x:
+            new_x = False
+
+        return (e, new_m, new_x)
+
+class SEP(Immediate8):
+    """Special handling of the SEP opcode."""
+    def new_state(self, addr, e, m, x, op0, op1, op2):
+        """Get the state of the e/m/x bits after executing the instruction.
+
+        Return a tuple of the new (e, m, x) values.
+        """
+        op8 = op0
+        new_m = m
+        new_x = x
+        set_m = bool(op8 & 0b00100000)
+        set_x = bool(op8 & 0b00010000)
+
+        # Native mode.
+        if e is False:
+            # Set flags as specified.
+            pass
+
+        # Emulation mode.
+        elif e is True:
+            # Flags cannot be set.
+            set_m = False
+            set_x = False
+
+        # Unknown native/emulation mode.
+        else:
+            # If the m or x bits are unaltered then it doesn't matter.
+            # If they are being set then we have a problem.
+            if set_m or set_x:
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e flag")
+
+        if set_m:
+            new_m = True
+        if set_x:
+            new_x = True
+
+        return (e, new_m, new_x)
+
+class PLP(Stack):
+    """Special handling of the PLP opcode."""
+    def new_state(self, addr, e, m, x, op0, op1, op2):
+        """Get the state of the e/m/x bits after executing the instruction.
+
+        Return a tuple of the new (e, m, x) values.
+        """
+        op8 = op0
+        new_m = m
+        new_x = x
+
+        # Native mode.
+        if e is False:
+            # Flags are replaced with unknown values.
+            new_m = None
+            new_x = None
+
+        # Emulation mode.
+        elif e is True:
+            # Flags cannot be changed.
+            pass
+
+        # Unknown native/emulation mode.
+        else:
+            raise dsnes.AmbiguousDisassembly(self.mnemonic, "e flag")
+
+        return (e, new_m, new_x)
+
+class XCE(Implied):
+    """Special handling of the XCE opcode."""
+    def new_state(self, addr, e, m, x, op0, op1, op2):
+        """Get the state of the e/m/x bits after executing the instruction.
+
+        Return a tuple of the new (e, m, x) values.
+        """
+        # We currently have no way to tell what happens.
+        # TODO: partial simulation of carry flag?
+        return (None, None, None)
+
 
 codes = {
 0x00: Interrupt("brk"), # ("brk #$%.2x              ", op8),
@@ -489,7 +615,7 @@ codes = {
 0x25: DirectPage("and"), # ("and $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
 0x26: DirectPage("rol"), # ("rol $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
 0x27: DPIndLong("and"), # ("and [$%.2x]     [%.6x]", op8, decode(OPTYPE_ILDP, op8)),
-0x28: Stack("plp"), # ("plp                   "),
+0x28: PLP("plp"), # ("plp                   "),
 0x29: ImmediateAmbiguous("and", "a8"), # (     ("and #$%.2x              ", op8) if a8 else ("and #$%.4x            ", op16)),
 0x2a: Accumulator("rol a"), # ("rol a                 "),
 0x2b: Stack("pld"), # ("pld                   "),
@@ -643,7 +769,7 @@ codes = {
 0xbf: AbsLongX("lda"), # ("lda $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 0xc0: ImmediateAmbiguous("cpy", "x8"), # (     ("cpy #$%.2x              ", op8) if x8 else ("cpy #$%.4x            ", op16)),
 0xc1: DPXInd("cmp"), # ("cmp ($%.2x,x)   [%.6x]", op8, decode(OPTYPE_IDPX, op8)),
-0xc2: Immediate8("rep", default_comment="Reset status bits"), # ("rep #$%.2x              ", op8),
+0xc2: REP("rep", default_comment="Reset status bits"), # ("rep #$%.2x              ", op8),
 0xc3: StackRelative("cmp"), # ("cmp $%.2x,s     [%.6x]", op8, decode(OPTYPE_SR, op8)),
 0xc4: DirectPage("cpy"), # ("cpy $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
 0xc5: DirectPage("cmp"), # ("cmp $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
@@ -675,7 +801,7 @@ codes = {
 0xdf: AbsLongX("cmp"), # ("cmp $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 0xe0: ImmediateAmbiguous("cpx", "x8"), # (     ("cpx #$%.2x              ", op8) if x8 else ("cpx #$%.4x            ", op16)),
 0xe1: DPXInd("sbc"), # ("sbc ($%.2x,x)   [%.6x]", op8, decode(OPTYPE_IDPX, op8)),
-0xe2: Immediate8("sep", default_comment="Set status bits"), # manual instruction list has a misprint, it's really sep ("sep #$%.2x              ", op8),
+0xe2: SEP("sep", default_comment="Set status bits"), # manual instruction list has a misprint, it's really sep ("sep #$%.2x              ", op8),
 0xe3: StackRelative("sbc"), # ("sbc $%.2x,s     [%.6x]", op8, decode(OPTYPE_SR, op8)),
 0xe4: DirectPage("cpx"), # manual instruction list has a misprint, it's really cpx. ("cpx $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
 0xe5: DirectPage("sbc"), # ("sbc $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
@@ -700,7 +826,7 @@ codes = {
 0xf8: Implied("sed", default_comment="Set decimal mode"), # ("sed                   "),
 0xf9: AbsoluteY("sbc"), # ("sbc $%.4x,y   [%.6x]", op16, decode(OPTYPE_ADDRY, op16)),
 0xfa: Stack("plx"), # ("plx                   "),
-0xfb: Implied("xce", default_comment="Exchange carry and emulation bits"), # ("xce                   "),
+0xfb: XCE("xce", default_comment="Exchange carry and emulation bits"), # ("xce                   "),
 0xfc: CallAbsXInd("jsr"), # ("jsr ($%.4x,x) [%.6x]", op16, decode(OPTYPE_IADDRX, op16)),
 0xfd: AbsoluteX("sbc"), # ("sbc $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
 0xfe: AbsoluteX("inc"), # ("inc $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
