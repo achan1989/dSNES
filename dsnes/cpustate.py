@@ -2,7 +2,7 @@
 # Licensed under GPLv3
 
 class State:
-    def __init__(self, e=None, m=None, x=None):
+    def __init__(self, e=None, m=None, x=None, c=None):
         self.e = None
         if e is not None:
             self.e = bool(e)
@@ -15,13 +15,17 @@ class State:
         if x is not None:
             self.x = bool(x)
 
+        self.c = None
+        if c is not None:
+            self.c = bool(c)
+
     def clone(self):
         cls = self.__class__
-        return cls(e=self.e, m=self.m, x=self.x)
+        return cls(e=self.e, m=self.m, x=self.x, c=self.c)
 
     def encode(self):
         s = ""
-        for flag in ("e", "m", "x"):
+        for flag in ("e", "m", "x", "c"):
             value = getattr(self, flag)
             if value is not None:
                 value = bool(value)
@@ -36,7 +40,9 @@ class State:
             "m": {"m": False},
             "M": {"m": True},
             "x": {"x": False},
-            "X": {"x": True}
+            "X": {"x": True},
+            "c": {"c": False},
+            "C": {"c": True}
         }
         kwargs = {}
         try:
@@ -50,6 +56,10 @@ class State:
             return None
 
     def __repr__(self):
-        return "<{cls} e={e} m={m} x={x}>".format(
-            cls=self.__class__.__name__,
-            e=self.e, m=self.m, x=self.x)
+        flags = self.encode()
+        if flags:
+            return "<{cls} {flags}>".format(
+                cls=self.__class__.__name__,
+                flags=flags)
+        else:
+            return "<{cls}>".format(cls=self.__class__.__name__)
