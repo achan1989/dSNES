@@ -4,8 +4,8 @@
 
 import os
 
+import dsnes
 from dsnes import contoml_fix as contoml
-from dsnes import bus, cartridge
 
 
 def load(path):
@@ -17,14 +17,16 @@ class Project:
     def __init__(self):
         self.path = None
         self.config = None
+        self.database = None
         self.bus = None
 
     def load(self, path):
         assert os.path.isdir(path), "{} is not a directory".format(path)
         self.path = path
         self.config = self.load_config(os.path.join(path, "config.toml"))
-        self.bus = bus.Bus()
-        self.cartridge = cartridge.Cartridge()
+        self.database = self.load_database(os.path.join(path, "database.toml"))
+        self.bus = dsnes.Bus()
+        self.cartridge = dsnes.Cartridge()
         self.cartridge.load(self)
 
     @staticmethod
@@ -32,3 +34,8 @@ class Project:
         assert os.path.isfile(path), "{} is not a file".format(path)
         config = contoml.load(path)
         return config
+
+    @staticmethod
+    def load_database(path):
+        assert os.path.isfile(path), "{} is not a file".format(path)
+        return dsnes.database.load(path)

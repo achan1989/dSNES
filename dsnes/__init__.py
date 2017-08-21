@@ -2,7 +2,9 @@
 # Licensed under GPLv3
 
 from dsnes import project
-from dsnes.analyser import Analyser
+from dsnes.analyser import Analyser, database
+from dsnes.bus import Bus
+from dsnes.cartridge import Cartridge
 from dsnes.disassembler import disassemble
 
 class UnmappedMemoryAccess(ValueError):
