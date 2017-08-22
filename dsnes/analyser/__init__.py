@@ -9,11 +9,14 @@ class Analyser:
         self.project = project
         self.state = None
         self.disassembly = None
+        # List of (target, from) tuples.
+        self.calls = None
         self.reset()
 
     def reset(self):
         self.state = dsnes.State()
         self.disassembly = []
+        self.calls = []
 
     def analyse_function(self, address):
         self.reset()
@@ -43,6 +46,10 @@ class Analyser:
             if action in (dsnes.NextAction.step, dsnes.NextAction.jump):
                 # Temporarily treat jump like a step.
                 address = data[0]
+            elif action is dsnes.NextAction.call:
+                target, after_return = data
+                self.calls.append((target, address))
+                address = after_return
             else:
                 raise NotImplementedError(
                     "Analyser can't handle {}".format(action))
