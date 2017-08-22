@@ -311,10 +311,17 @@ class PushEffectiveRel(InstructionType):
 class CallAbs(Absolute):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        # Call into the 16b address provided. This is in the same program
+        # bank as this instruction.
+        op16 = op0 | (op1 << 8)
+        pbr = addr & 0xFF0000
+        target = pbr + op16
+        # Return address from the call.
+        base = super().next_instruction_addr(addr, state, op0, op1, op2)
+        assert base[0] == NextAction.step
+        after_return = base[1]
+
+        return (NextAction.call, target, after_return)
 
 class CallAbsLong(AbsLong):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
@@ -409,18 +416,32 @@ class JumpAbsLong(AbsLong):
 class BranchCond(InstructionType):
     nbytes = 2
 
+    @classmethod
+    def calc_target(cls, addr, operand):
+        assert cls.nbytes is not None
+        offset = util.s8_to_num(operand)
+        pbr = addr & 0xff0000
+        pc = (((addr & 0xffff) + cls.nbytes + offset) & 0xffff)
+        target = pbr + pc
+        return target
+
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        op16 = op0 | (op1 << 8)
-        op24 = op0 | (op1 << 8) | (op2 << 16)
-        raise NotImplementedError()
+        target = self.calc_target(addr, op8)
+        return "{} ${:04x}     [{:06x}]".format(
+            self.mnemonic, target & 0xFFFF, target)
 
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        # If branch is taken.
+        op8 = op0
+        taken = self.calc_target(addr, op8)
+        # If branch is not taken.
+        base = super().next_instruction_addr(addr, state, op0, op1, op2)
+        assert base[0] == NextAction.step
+        not_taken = base[1]
+
+        return (NextAction.branch, taken, not_taken)
 
 class BranchAlways(InstructionType):
     nbytes = 2
