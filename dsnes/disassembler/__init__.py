@@ -15,7 +15,7 @@ from dsnes import util
 
 Disassembly = collections.namedtuple(
     "Disassembly",
-    ["asm_str", "next_addr", "new_state"])
+    ["addr", "asm_str", "next_addr", "new_state"])
 
 
 class InstructionType:
@@ -27,6 +27,7 @@ class InstructionType:
 
     def disassemble(self, addr, state, op0, op1, op2):
         return Disassembly(
+            addr=addr,
             asm_str=self.asm_str(addr, state, op0, op1, op2),
             next_addr=self.next_instruction_addr(addr, state, op0, op1, op2),
             new_state=self.new_state(addr, state.clone(), op0, op1, op2)
