@@ -573,7 +573,30 @@ class XCE(Implied):
 
         Return a modified State.
         """
-        raise NotImplementedError()
+        # Enter native mode.
+        # Assume that going native->native is treated the same way.
+        if state.c is False:
+            state.c = state.e
+            state.e = False
+            state.m = True
+            state.x = True
+
+        # Enter emulation mode.
+        # Assume that going emulation->emulation is treated the same way.
+        elif state.c is True:
+            state.c = state.e
+            state.e = True
+            state.m = True
+            state.x = True
+
+        # Don't know which mode we're going into.
+        else:
+            # We could just set emulation mode to unknown and that would be ok.
+            # But it's more useful to error out at this point and force the user
+            # to figure out what's happening.
+            raise dsnes.AmbiguousDisassembly(self.mnemonic, "c flag")
+
+        return state
 
 class SEC(Implied):
     """Special handling of the SEC opcode."""
