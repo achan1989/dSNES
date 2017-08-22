@@ -53,6 +53,7 @@ class Bus:
         self.map_count = idx
 
     def read(self, addr):
+        addr = int(addr)
         try:
             map_id = self.lookup[addr]
             reader = self.reader[map_id]
@@ -62,6 +63,7 @@ class Bus:
         return reader(dev_addr)
 
     def write(self, addr, data):
+        addr = int(addr)
         try:
             map_id = self.lookup[addr]
             writer = self.writer[map_id]
