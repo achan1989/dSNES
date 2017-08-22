@@ -8,7 +8,8 @@ class Analyser:
     def __init__(self, project):
         self.project = project
         self.state = None
-        self.disassembly = []
+        self.disassembly = None
+        self.reset()
 
     def reset(self):
         self.state = dsnes.State()
@@ -34,5 +35,14 @@ class Analyser:
 
             disassembly = dsnes.disassemble(address, bus, self.state)
             self.disassembly.append(disassembly)
-            address = disassembly.next_addr
             calculated_state = disassembly.new_state
+
+            do_next = disassembly.next_addr
+            action, data = do_next[0], do_next[1:]
+
+            if action in (dsnes.NextAction.step, dsnes.NextAction.jump):
+                # Temporarily treat jump like a step.
+                address = data[0]
+            else:
+                raise NotImplementedError(
+                    "Analyser can't handle {}".format(action))

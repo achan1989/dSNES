@@ -8,6 +8,7 @@ https://byuu.org/emulation/higan/licensing).
 # Licensed under GPLv3
 
 import collections
+from enum import Enum
 
 import dsnes
 from dsnes import util
@@ -16,6 +17,14 @@ from dsnes import util
 Disassembly = collections.namedtuple(
     "Disassembly",
     ["addr", "asm_str", "next_addr", "new_state"])
+
+
+class NextAction(Enum):
+    step = 1
+    jump = 2
+    call = 3
+    ret = 4
+    branch = 5
 
 
 class InstructionType:
@@ -45,7 +54,7 @@ class InstructionType:
         pbr = addr & 0xFF0000
         a = addr & 0xFFFF
         a = (a + self.nbytes) & 0xFFFF
-        return pbr + a
+        return (NextAction.step, pbr + a)
 
     def new_state(self, addr, state, op0, op1, op2):
         """Get the state of the CPU flags after executing the instruction.
@@ -122,7 +131,7 @@ class ImmediateAmbiguous(InstructionType):
         pbr = addr & 0xFF0000
         a = addr & 0xFFFF
         a = (a + nbytes) & 0xFFFF
-        return pbr + a
+        return (NextAction.step, pbr + a)
 
 class Absolute(InstructionType):
     nbytes = 3
@@ -310,10 +319,15 @@ class CallAbs(Absolute):
 class CallAbsLong(AbsLong):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        # Call into the 24b address provided.
+        op24 = op0 | (op1 << 8) | (op2 << 16)
+        target = op24
+        # Return address from the call.
+        base = super().next_instruction_addr(addr, state, op0, op1, op2)
+        assert base[0] == NextAction.step
+        after_return = base[1]
+
+        return (NextAction.call, target, after_return)
 
 class CallAbsXInd(AbsXInd):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
@@ -390,7 +404,7 @@ class JumpAbsLong(AbsLong):
         """Get the PBR:PC value for the next instruction."""
         # Jump to the 24b address provided.
         op24 = op0 | (op1 << 8) | (op2 << 16)
-        return op24
+        return (NextAction.jump, op24)
 
 class BranchCond(InstructionType):
     nbytes = 2
@@ -432,7 +446,7 @@ class BranchAlways(InstructionType):
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
         op8 = op0
         target = self.calc_target(addr, op8)
-        return target
+        return (NextAction.jump, target)
 
 class BranchAlwaysLong(InstructionType):
     nbytes = 3

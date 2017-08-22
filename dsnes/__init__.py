@@ -5,7 +5,7 @@ from dsnes import project
 from dsnes.analyser import Analyser, database
 from dsnes.bus import Bus
 from dsnes.cartridge import Cartridge
-from dsnes.disassembler import disassemble
+from dsnes.disassembler import disassemble, NextAction
 from dsnes.cpustate import State
 
 class UnmappedMemoryAccess(ValueError):
