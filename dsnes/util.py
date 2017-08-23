@@ -23,3 +23,7 @@ def is_filelike(obj):
 def s8_to_num(value):
     b = value.to_bytes(1, "little")
     return int.from_bytes(b, "little", signed=True)
+
+def s16_to_num(value):
+    b = value.to_bytes(2, "little")
+    return int.from_bytes(b, "little", signed=True)

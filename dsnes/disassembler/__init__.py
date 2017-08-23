@@ -16,7 +16,7 @@ from dsnes import util
 
 Disassembly = collections.namedtuple(
     "Disassembly",
-    ["addr", "asm_str", "next_addr", "new_state"])
+    ["addr", "raw", "asm_str", "state", "next_addr", "new_state"])
 
 
 class NextAction(Enum):
@@ -34,13 +34,22 @@ class InstructionType:
         self.mnemonic = mnemonic
         self.default_comment = default_comment
 
-    def disassemble(self, addr, state, op0, op1, op2):
+    def disassemble(self, addr, state, opcode, op0, op1, op2):
         return Disassembly(
             addr=addr,
+            raw=self.get_raw_bytes(addr, state, opcode, op0, op1, op2),
             asm_str=self.asm_str(addr, state, op0, op1, op2),
+            state=state,
             next_addr=self.next_instruction_addr(addr, state, op0, op1, op2),
             new_state=self.new_state(addr, state.clone(), op0, op1, op2)
         )
+
+    def get_raw_bytes(self, addr, state, opcode, op0, op1, op2):
+        if self.nbytes is None:
+            raise NotImplementedError(
+                "get_raw_bytes() for {}".format(self.__class__.__name__))
+        b = (opcode, op0, op1, op2)
+        return b[:self.nbytes]
 
     def asm_str(self, addr, state, op0, op1, op2):
         raise NotImplementedError(
@@ -50,7 +59,10 @@ class InstructionType:
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
+        if self.nbytes is None:
+            raise NotImplementedError(
+                "next_instruction_addr() for {}".format(
+                    self.__class__.__name__))
         pbr = addr & 0xFF0000
         a = addr & 0xFFFF
         a = (a + self.nbytes) & 0xFFFF
@@ -81,6 +93,27 @@ class ImmediateAmbiguous(InstructionType):
         assert selector in ("a8", "x8")
         super().__init__(mnemonic, default_comment)
         self.selector = selector
+
+    def get_raw_bytes(self, addr, state, opcode, op0, op1, op2):
+        b = (opcode, op0, op1, op2)
+        a8 = state.e or state.m
+        x8 = state.e or state.x
+
+        if self.selector == "a8":
+            if a8 is None:
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or m flags")
+            if a8:
+                return b[:2]
+            else:
+                return b[:3]
+
+        else:
+            if x8 is None:
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or x flags")
+            if x8:
+                return b[:2]
+            else:
+                return b[:3]
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
@@ -930,7 +963,7 @@ codes = {
 def disassemble(addr, bus, state):
     original_addr = addr
 
-    op = bus.read(addr); addr = increment_pc(addr)
+    opcode = bus.read(addr); addr = increment_pc(addr)
     op0 = bus.read(addr); addr = increment_pc(addr)
     op1 = bus.read(addr); addr = increment_pc(addr)
     op2 = bus.read(addr)
@@ -942,8 +975,8 @@ def disassemble(addr, bus, state):
             "Instruction at 0x{:06x} wraps off the end of this bank".format(
                 original_addr))
 
-    info = codes[op]
-    disassembly = info.disassemble(original_addr, state, op0, op1, op2)
+    info = codes[opcode]
+    disassembly = info.disassemble(original_addr, state, opcode, op0, op1, op2)
     return disassembly
 
 def increment_pc(addr):
