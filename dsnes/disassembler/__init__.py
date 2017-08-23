@@ -371,10 +371,13 @@ class ReturnSubLong(Stack):
 class JumpAbs(Absolute):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        # Jump to the 16b address provided. This is in the same program
+        # bank as this instruction.
+        op16 = op0 | (op1 << 8)
+        pbr = addr & 0xFF0000
+        target = pbr + op16
+
+        return (NextAction.jump, target)
 
 class JumpAbsInd(InstructionType):
     """Jump to 16b address in (bank 0 + offset) indirect."""
@@ -472,18 +475,28 @@ class BranchAlways(InstructionType):
 class BranchAlwaysLong(InstructionType):
     nbytes = 3
 
+    @classmethod
+    def calc_target(cls, addr, operand):
+        assert cls.nbytes is not None
+        offset = util.s16_to_num(operand)
+        pbr = addr & 0xff0000
+        pc = (((addr & 0xffff) + cls.nbytes + offset) & 0xffff)
+        target = pbr + pc
+        return target
+
     def asm_str(self, addr, state, op0, op1, op2):
-        op8 = op0
         op16 = op0 | (op1 << 8)
-        op24 = op0 | (op1 << 8) | (op2 << 16)
-        raise NotImplementedError()
+        target = self.calc_target(addr, op16)
+        return "{} ${:04x}      [{:06x}]".format(
+            self.mnemonic, target & 0xFFFF, target)
 
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        op16 = op0 | (op1 << 8)
+        target = self.calc_target(addr, op16)
+        return (NextAction.jump, target)
 
 class Interrupt(InstructionType):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
