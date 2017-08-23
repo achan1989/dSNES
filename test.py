@@ -12,4 +12,5 @@ try:
 except:
     for item in analyser.disassembly:
         print(item)
+    print("Processed {} instructions".format(len(analyser.visited)))
     raise
