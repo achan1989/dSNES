@@ -73,3 +73,16 @@ class Analyser:
 
                 self.visited.add(address)
                 address = next_addr
+
+    def display(self):
+        # disassembly = sorted(self.disassembly, key=lambda x: x.addr)
+        disassembly = self.disassembly
+        for item in disassembly:
+            # asm string is 34 long
+            s = "{pbr:02x}:{pc:04x}:{raw:<11}  {asm:<34s}    {state}".format(
+                pbr=(item.addr & 0xFF0000) >> 16,
+                pc=item.addr & 0xFFFF,
+                raw=" ".join([format(n, "02x") for n in item.raw]),
+                asm=item.asm_str,
+                state=item.state.encode())
+            print(s)

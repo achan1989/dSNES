@@ -10,7 +10,6 @@ analyser = dsnes.Analyser(project)
 try:
     analyser.analyse_function(0xff9c)
 except:
-    for item in analyser.disassembly:
-        print(item)
+    analyser.display()
     print("Processed {} instructions".format(len(analyser.visited)))
     raise

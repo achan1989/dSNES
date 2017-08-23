@@ -25,7 +25,7 @@ class State:
 
     def encode(self):
         s = ""
-        for flag in ("e", "m", "x", "c"):
+        for flag in ("m", "x", "c", "e"):
             value = getattr(self, flag)
             if value is not None:
                 value = bool(value)
