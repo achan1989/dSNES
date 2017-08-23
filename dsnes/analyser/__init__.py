@@ -22,15 +22,19 @@ class Analyser:
         self.calls = []
         self.visited = set()
 
-    def analyse_function(self, address):
+    def analyse_function(self, address, state_str=None):
         self.reset()
         orig_addr = address
         bus = self.project.bus
         db = self.project.database
         queue = collections.deque()
         queue.append(orig_addr)
-        # By default we don't know what state the CPU is in.
-        calculated_state = dsnes.State()
+        # By default we don't know what state the CPU is in, though the caller
+        # can provide a starting state.
+        if state_str is not None:
+            calculated_state = dsnes.State.parse(str(state_str))
+        else:
+            calculated_state = dsnes.State()
 
         while queue:
             address = queue.pop()
