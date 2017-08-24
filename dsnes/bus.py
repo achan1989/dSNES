@@ -35,14 +35,16 @@ class Bus:
         # stupid number of mappings.
         assert idx < 256, "Too many mappings"
 
+        reduce_fn = self.make_reduce_fn(mask)
+
         for bank in range(bank_lo, bank_hi+1):
-            for addr in range(addr_lo, addr_hi+1):
-                target_addr = (bank << 16 | addr)
-                assert not self.lookup.get(target_addr, None), (
+            pbr = bank << 16
+            for target_addr in range((pbr | addr_lo), (pbr | addr_hi)+1):
+                assert target_addr not in self.lookup, (
                     "Target address {} has already been mapped".format(
                         target_addr))
 
-                offset = self.reduce(target_addr, mask)
+                offset = reduce_fn(target_addr, mask)
                 if size:
                     offset = base + self.mirror(offset, size - base)
                 self.lookup[target_addr] = idx
@@ -73,19 +75,33 @@ class Bus:
         writer(dev_addr, data)
 
     @staticmethod
-    def reduce(addr, mask):
-        """Get the effective memory device address.
+    def make_reduce_fn(mask):
+        """Make a function that computes the effective memory device address.
 
-        Memory devices don't always connect all address lines to the CPU
-        address bus; this is denoted by the relevant bit being set in the mask.
-        This function calculates the effective address seen by the memory
-        device based on the given CPU address and the device mask.
+        Memory devices don't always connect their address lines to the CPU
+        address bus one-to-one, but can skip CPU address lines; this is denoted
+        by the relevant bit being set in the mask.
+        Return a function that calculates the effective address seen by the
+        memory device based on a given CPU address and device mask.
         """
-        while mask:
-            bits = (mask & -mask) - 1
-            addr = ((addr >> 1) & ~bits) | (addr & bits)
-            mask = (mask & (mask - 1)) >> 1
-        return addr
+        if mask == 0:
+            def reduce_fn(addr, mask):
+                return addr
+
+        elif mask == 0x8000:
+            def reduce_fn(addr, mask):
+                return (addr & 0x7FFF) + ((addr >> 1) & 0xFFFF8000)
+
+        else:
+            def reduce_fn(addr, mask):
+                while mask:
+                    bits = (mask & -mask) - 1
+                    print("bits: {:x}".format(bits))
+                    addr = ((addr >> 1) & ~bits) | (addr & bits)
+                    mask = (mask & (mask - 1)) >> 1
+                return addr
+
+        return reduce_fn
 
     @staticmethod
     def mirror(addr, size):
