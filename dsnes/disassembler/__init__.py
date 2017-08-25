@@ -469,6 +469,7 @@ class BranchCond(InstructionType):
 
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
+        # Stays within the same program bank as this instruction.
         # If branch is taken.
         op8 = op0
         taken = self.calc_target(addr, op8)
@@ -499,8 +500,7 @@ class BranchAlways(InstructionType):
 
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        # Stays within the same program bank as this instruction.
         op8 = op0
         target = self.calc_target(addr, op8)
         return (NextAction.jump, target)
@@ -525,8 +525,7 @@ class BranchAlwaysLong(InstructionType):
 
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
+        # Stays within the same program bank as this instruction.
         op16 = op0 | (op1 << 8)
         target = self.calc_target(addr, op16)
         return (NextAction.jump, target)
