@@ -171,7 +171,12 @@ class Absolute(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
-        return "{} ${:04x}     [DBR:{:04x}]".format(self.mnemonic, op16, op16)
+        if state.dbr is None:
+            dbr_str = "DBR"
+        else:
+            dbr_str = "{:02x}".format(state.dbr)
+        return "{} ${:04x}     [{}:{:04x}]".format(
+            self.mnemonic, op16, dbr_str, op16)
 
 class AbsLong(InstructionType):
     nbytes = 4
