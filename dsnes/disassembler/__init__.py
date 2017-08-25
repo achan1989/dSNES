@@ -69,11 +69,11 @@ class InstructionType:
         return (NextAction.step, pbr + a)
 
     def new_state(self, addr, state, op0, op1, op2):
-        """Get the state of the CPU flags after executing the instruction.
+        """Get the CPU state after executing the instruction.
 
         Return a modified State.
         """
-        # Most instructions leave e/m/x unchanged.
+        # Most instructions leave most things unchanged.
         # Most instructions change c in ways we can't predict and don't care
         # about.
         state.c = None
@@ -545,7 +545,7 @@ class RFU(Implied):
 class REP(Immediate8):
     """Special handling of the REP opcode."""
     def new_state(self, addr, state, op0, op1, op2):
-        """Get the state of the CPU flags after executing the instruction.
+        """Get the CPU state after executing the instruction.
 
         Return a modified State.
         """
@@ -584,7 +584,7 @@ class REP(Immediate8):
 class SEP(Immediate8):
     """Special handling of the SEP opcode."""
     def new_state(self, addr, state, op0, op1, op2):
-        """Get the state of the CPU flags after executing the instruction.
+        """Get the CPU state after executing the instruction.
 
         Return a modified State.
         """
@@ -623,7 +623,7 @@ class SEP(Immediate8):
 class PLP(Stack):
     """Special handling of the PLP opcode."""
     def new_state(self, addr, state, op0, op1, op2):
-        """Get the state of the CPU flags after executing the instruction.
+        """Get the CPU state after executing the instruction.
 
         Return a modified State.
         """
@@ -650,7 +650,7 @@ class PLP(Stack):
 class XCE(Implied):
     """Special handling of the XCE opcode."""
     def new_state(self, addr, state, op0, op1, op2):
-        """Get the state of the CPU flags after executing the instruction.
+        """Get the CPU state after executing the instruction.
 
         Return a modified State.
         """
@@ -682,7 +682,7 @@ class XCE(Implied):
 class SEC(Implied):
     """Special handling of the SEC opcode."""
     def new_state(self, addr, state, op0, op1, op2):
-        """Get the state of the CPU flags after executing the instruction.
+        """Get the CPU state after executing the instruction.
 
         Return a modified State.
         """
@@ -692,7 +692,7 @@ class SEC(Implied):
 class CLC(Implied):
     """Special handling of the CLC opcode."""
     def new_state(self, addr, state, op0, op1, op2):
-        """Get the state of the CPU flags after executing the instruction.
+        """Get the CPU state after executing the instruction.
 
         Return a modified State.
         """

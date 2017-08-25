@@ -2,7 +2,7 @@
 # Licensed under GPLv3
 
 class State:
-    def __init__(self, e=None, m=None, x=None, c=None):
+    def __init__(self, e=None, m=None, x=None, c=None, dbr=None):
         self.e = None
         if e is not None:
             self.e = bool(e)
@@ -19,22 +19,38 @@ class State:
         if c is not None:
             self.c = bool(c)
 
+        self.dbr = None
+        if dbr is not None:
+            assert dbr >= 0 and dbr <= 0xff
+            self.dbr = int(dbr)
+
     def clone(self):
         cls = self.__class__
-        return cls(e=self.e, m=self.m, x=self.x, c=self.c)
+        return cls(e=self.e, m=self.m, x=self.x, c=self.c, dbr=self.dbr)
 
     def encode(self):
-        s = ""
+        p = ""
         for flag in ("m", "x", "c", "e"):
             value = getattr(self, flag)
             if value is not None:
                 value = bool(value)
-                s += flag.upper() if value else flag
-        return s or None
+                p += flag.upper() if value else flag
+        if p:
+            p = "p={}".format(p)
+
+        b = ""
+        if self.dbr is not None:
+            b = "b={:x}".format(self.dbr)
+
+        if any((p, b)):
+            return " ".join((p, b))
+        else:
+            return None
 
     @classmethod
     def parse(cls, s):
-        lookup = {
+        kwargs = {}
+        p_lookup = {
             "e": {"e": False},
             "E": {"e": True},
             "m": {"m": False},
@@ -44,22 +60,36 @@ class State:
             "c": {"c": False},
             "C": {"c": True}
         }
-        kwargs = {}
-        try:
-            for letter in s:
-                kwargs.update(lookup[letter])
-        except LookupError:
-            raise ValueError("'{}' is not a valid State encoding".format(s))
+
+        parts = s.split(" ")
+        for part in parts:
+            kind = part[:2]
+            data = part[2:]
+            if kind == "p=":
+                try:
+                    for letter in data:
+                        kwargs.update(p_lookup[letter])
+                except LookupError:
+                    raise ValueError(
+                        "'{}' is not a valid CPU flags encoding".format(data))
+
+            elif kind == "b=":
+                dbr = int(data, base=16)
+                kwargs["dbr"] = dbr
+
         if kwargs:
             return cls(**kwargs)
         else:
+            if s:
+                raise ValueError(
+                    "'{}' is not a valid CPU state encoding".format(s))
             return None
 
     def __repr__(self):
-        flags = self.encode()
-        if flags:
-            return "<{cls} {flags}>".format(
+        code = self.encode()
+        if s:
+            return "<{cls} {code}>".format(
                 cls=self.__class__.__name__,
-                flags=flags)
+                code=code)
         else:
             return "<{cls}>".format(cls=self.__class__.__name__)
