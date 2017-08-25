@@ -699,6 +699,16 @@ class CLC(Implied):
         state.c = False
         return state
 
+class PLB(Stack):
+    """Special handling of the PLB opcode."""
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the CPU state after executing the instruction.
+
+        Return a modified State.
+        """
+        state.dbr = None
+        return state
+
 
 codes = {
 0x00: Interrupt("brk"), # ("brk #$%.2x              ", op8),
@@ -872,7 +882,7 @@ codes = {
 0xa8: Implied("tay"), # ("tay                   "),
 0xa9: ImmediateAmbiguous("lda", "a8"), # (     ("lda #$%.2x              ", op8) if a8 else ("lda #$%.4x            ", op16)),
 0xaa: Implied("tax"), # ("tax                   "),
-0xab: Stack("plb"), # ("plb                   "),
+0xab: PLB("plb"), # ("plb                   "),
 0xac: Absolute("ldy"), # ("ldy $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
 0xad: Absolute("lda"), # ("lda $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
 0xae: Absolute("ldx"), # ("ldx $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
