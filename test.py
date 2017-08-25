@@ -5,7 +5,7 @@ import dsnes
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("address", default=0xff9c, type=partial(int, base=0))
+parser.add_argument("--address", default=0xff9c, type=partial(int, base=0))
 parser.add_argument("--state", default=None)
 args = parser.parse_args()
 
