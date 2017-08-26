@@ -52,6 +52,21 @@ class Database:
             self.state_cache[addr] = state.clone()
             self.data["states"][key] = s
 
+    def get_label(self, addr):
+        """Get the first label for a given address."""
+        key = encode_address_key(addr)
+        labels = self.data["labels"].get(key, [])
+        if labels:
+            return labels[0]
+        else:
+            return None
+
+    def get_labels(self, addr):
+        """Get all labels for a given address."""
+        key = encode_address_key(addr)
+        labels = self.data["labels"].get(key, [])
+        return labels
+
     def load(self, path):
         self.path = path
         self.data = contoml.load(path)
