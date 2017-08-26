@@ -4,7 +4,7 @@
 
 import os
 
-from dsnes import memory
+import dsnes
 
 
 class Cartridge:
@@ -30,7 +30,7 @@ class Cartridge:
             maps = config["map"]
             assert len(maps) > 0, "Must map ROM somewhere"
 
-            rom = memory.Memory()
+            rom = dsnes.Rom()
             rom.allocate(open(path, 'rb'), size=size)
             for m in maps:
                 bank_lo = int(m["bank_low"], 0)
@@ -51,7 +51,7 @@ class Cartridge:
                     mask = 0
                 project.bus.map(
                     bank_lo, bank_hi, addr_lo, addr_hi,
-                    size, base, mask, read_fn=rom.read, write_fn=rom.write)
+                    size, base, mask, read_fn=rom.read)
 
             return rom
 

@@ -7,6 +7,7 @@ from dsnes.bus import Bus
 from dsnes.cartridge import Cartridge
 from dsnes.disassembler import disassemble, NextAction
 from dsnes.cpustate import State
+from dsnes.memory import Rom
 
 class UnmappedMemoryAccess(ValueError):
     pass

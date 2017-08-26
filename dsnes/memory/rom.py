@@ -3,7 +3,7 @@
 
 from dsnes import util
 
-class Memory:
+class Rom:
     def __init__(self):
         self.data = None
         self.size = 0
@@ -24,6 +24,3 @@ class Memory:
     def read(self, addr):
         assert addr < self.size
         return self.data[addr]
-
-    def write(self, addr, data):
-        raise TypeError("Can't write to ROM at ${:06x}".format(addr))

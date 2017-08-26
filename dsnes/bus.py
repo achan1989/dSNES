@@ -17,25 +17,27 @@ class Bus:
     """
 
     def __init__(self):
-        # Maps CPU address bus values to reader/writer ids.
+        # Maps CPU address bus values to access ids.
         self.lookup = {}
         # Maps CPU address bus values to device memory addresses.
         self.target = {}
         self.map_count = 0
-        # Maps ids to read and write functions.
+        # Maps ids to access functions.
         self.reader = {}
-        self.writer = {}
+        self.labeller = {}
 
     def map(self, bank_lo, bank_hi, addr_lo, addr_hi, size=0, base=0,
-            mask=0, read_fn=None, write_fn=None):
-        assert read_fn is not None
-        assert write_fn is not None
+            mask=0, read_fn=None, label_fn=None):
+        if read_fn is None:
+            read_fn = default_read_fn
+        if label_fn is None:
+            label_fn = default_label_fn
         idx = self.map_count + 1
         # Not strictly necessary, but I want to know if I accidentally make a
         # stupid number of mappings.
         assert idx < 256, "Too many mappings"
 
-        reduce_fn = self.make_reduce_fn(mask)
+        reduce_fn = make_reduce_fn(mask)
 
         for bank in range(bank_lo, bank_hi+1):
             pbr = bank << 16
@@ -46,12 +48,12 @@ class Bus:
 
                 offset = reduce_fn(target_addr, mask)
                 if size:
-                    offset = base + self.mirror(offset, size - base)
+                    offset = base + mirror(offset, size - base)
                 self.lookup[target_addr] = idx
                 self.target[target_addr] = offset
 
         self.reader[idx] = read_fn
-        self.writer[idx] = write_fn
+        self.labeller[idx] = label_fn
         self.map_count = idx
 
     def read(self, addr):
@@ -64,61 +66,66 @@ class Bus:
             raise dsnes.UnmappedMemoryAccess(addr) from ex
         return reader(dev_addr)
 
-    def write(self, addr, data):
+    def get_label(self, addr):
         addr = int(addr)
         try:
             map_id = self.lookup[addr]
-            writer = self.writer[map_id]
+            labeller = self.labeller[map_id]
             dev_addr = self.target[addr]
         except LookupError as ex:
             raise dsnes.UnmappedMemoryAccess(addr) from ex
-        writer(dev_addr, data)
+        return labeller(dev_addr)
 
-    @staticmethod
-    def make_reduce_fn(mask):
-        """Make a function that computes the effective memory device address.
 
-        Memory devices don't always connect their address lines to the CPU
-        address bus one-to-one, but can skip CPU address lines; this is denoted
-        by the relevant bit being set in the mask.
-        Return a function that calculates the effective address seen by the
-        memory device based on a given CPU address and device mask.
-        """
-        if mask == 0:
-            def reduce_fn(addr, mask):
-                return addr
+def make_reduce_fn(mask):
+    """Make a function that computes the effective memory device address.
 
-        elif mask == 0x8000:
-            def reduce_fn(addr, mask):
-                return (addr & 0x7FFF) + ((addr >> 1) & 0xFFFF8000)
+    Memory devices don't always connect their address lines to the CPU
+    address bus one-to-one, but can skip CPU address lines; this is denoted
+    by the relevant bit being set in the mask.
+    Return a function that calculates the effective address seen by the
+    memory device based on a given CPU address and device mask.
+    """
+    if mask == 0:
+        def reduce_fn(addr, mask):
+            return addr
 
-        else:
-            def reduce_fn(addr, mask):
-                while mask:
-                    bits = (mask & -mask) - 1
-                    print("bits: {:x}".format(bits))
-                    addr = ((addr >> 1) & ~bits) | (addr & bits)
-                    mask = (mask & (mask - 1)) >> 1
-                return addr
+    elif mask == 0x8000:
+        def reduce_fn(addr, mask):
+            return (addr & 0x7FFF) + ((addr >> 1) & 0xFFFF8000)
 
-        return reduce_fn
+    else:
+        def reduce_fn(addr, mask):
+            while mask:
+                bits = (mask & -mask) - 1
+                print("bits: {:x}".format(bits))
+                addr = ((addr >> 1) & ~bits) | (addr & bits)
+                mask = (mask & (mask - 1)) >> 1
+            return addr
 
-    @staticmethod
-    def mirror(addr, size):
-        """Presumably accounting for the way that some memory devices are
-        mirrored in the the memory map.  I don't really know how this works...
-        """
-        assert size > 0
-        base = 0
-        mask = 1 << 23
-        while addr >= size:
-            while not (addr & mask):
-                mask = mask >> 1
+    return reduce_fn
 
-            addr -= mask
-            if size > mask:
-                size -= mask
-                base += mask
+def mirror(addr, size):
+    """Presumably accounting for the way that some memory devices are
+    mirrored in the the memory map.  I don't really know how this works...
+    """
+    assert size > 0
+    base = 0
+    mask = 1 << 23
+    while addr >= size:
+        while not (addr & mask):
             mask = mask >> 1
 
-        return base + addr
+        addr -= mask
+        if size > mask:
+            size -= mask
+            base += mask
+        mask = mask >> 1
+
+    return base + addr
+
+def default_read_fn(addr):
+    raise TypeError("No read function for memory at 0x{:x}".format(addr))
+
+def default_label_fn(addr):
+    return None
