@@ -16,7 +16,14 @@ from dsnes import util
 
 Disassembly = collections.namedtuple(
     "Disassembly",
-    ["addr", "raw", "asm_str", "state", "next_addr", "new_state"])
+    ["addr", "raw", "asm_str", "target_info", "state", "next_addr",
+     "new_state"])
+
+TargetInfo = collections.namedtuple(
+    "TargetInfo",
+    ["addr", "str_fn"])
+
+NULL_TARGET_INFO = TargetInfo(addr=None, str_fn=lambda l: "")
 
 
 class NextAction(Enum):
@@ -39,6 +46,7 @@ class InstructionType:
             addr=addr,
             raw=self.get_raw_bytes(addr, state, opcode, op0, op1, op2),
             asm_str=self.asm_str(addr, state, op0, op1, op2),
+            target_info=self.target_info(addr, state, op0, op1, op2),
             state=state,
             next_addr=self.next_instruction_addr(addr, state, op0, op1, op2),
             new_state=self.new_state(addr, state.clone(), op0, op1, op2)
@@ -52,6 +60,10 @@ class InstructionType:
         return b[:self.nbytes]
 
     def asm_str(self, addr, state, op0, op1, op2):
+        raise NotImplementedError(
+            "Not implemented for {}".format(self.__class__.__name__))
+
+    def target_info(self, addr, state, op0, op1, op2):
         raise NotImplementedError(
             "Not implemented for {}".format(self.__class__.__name__))
 
@@ -87,6 +99,9 @@ class Immediate8(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         return "{} #${:02x}".format(self.mnemonic, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        return NULL_TARGET_INFO
 
 class ImmediateAmbiguous(InstructionType):
     def __init__(self, mnemonic, selector, default_comment=None):
@@ -137,6 +152,9 @@ class ImmediateAmbiguous(InstructionType):
             else:
                 return "{} #${:04x}".format(self.mnemonic, op16)
 
+    def target_info(self, addr, state, op0, op1, op2):
+        return NULL_TARGET_INFO
+
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # The instruction length depends on the processor flags e/m/x.
@@ -171,12 +189,24 @@ class Absolute(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
+        return "{} ${:04x}".format(self.mnemonic, op16)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        pc = op0 | (op1 << 8)
         if state.dbr is None:
-            dbr_str = "DBR"
+            tgt_addr = None
+            addr_str = "DBR:{:04x}".format(pc)
         else:
-            dbr_str = "{:02x}".format(state.dbr)
-        return "{} ${:04x}     [{}:{:04x}]".format(
-            self.mnemonic, op16, dbr_str, op16)
+            tgt_addr = (state.dbr << 16) | pc
+            addr_str = "{:06x}".format(tgt_addr)
+
+        def str_fn(label=None):
+            if label is None:
+                label = addr_str
+            return "[{}]".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
 
 class AbsLong(InstructionType):
     nbytes = 4
@@ -185,13 +215,35 @@ class AbsLong(InstructionType):
         op24 = op0 | (op1 << 8) | (op2 << 16)
         return "{} ${:06x}".format(self.mnemonic, op24)
 
+    def target_info(self, addr, state, op0, op1, op2):
+        tgt_addr = op0 | (op1 << 8) | (op2 << 16)
+
+        def str_fn(label=None):
+            if label is None:
+                label = "{:06x}".format(tgt_addr)
+            return "[{}]".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
+
 class AbsLongX(InstructionType):
     """Absolute long, indexed by X."""
     nbytes = 4
 
     def asm_str(self, addr, state, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
-        return "{} ${:06x},x [{:06x}]+x".format(self.mnemonic, op24, op24)
+        return "{} ${:06x},x".format(self.mnemonic, op24)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        tgt_addr = op0 | (op1 << 8) | (op2 << 16)
+
+        def str_fn(label=None):
+            if label is None:
+                return ""
+            return "[{}],x".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
 
 class AbsoluteX(InstructionType):
     """Absolute, indexed by X."""
@@ -199,7 +251,24 @@ class AbsoluteX(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
-        return "{} ${:04x},x   [DBR:{:04X}]+x".format(self.mnemonic, op16, op16)
+        return "{} ${:04x},x".format(self.mnemonic, op16)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        pc = op0 | (op1 << 8)
+        if state.dbr is None:
+            tgt_addr = None
+            addr_str = "DBR:{:04x}".format(pc)
+        else:
+            tgt_addr = (state.dbr << 16) | pc
+            addr_str = "{:06x}".format(tgt_addr)
+
+        def str_fn(label=None):
+            if label is None:
+                label = addr_str
+            return "[{}]+x".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
 
 class AbsoluteY(InstructionType):
     """Absolute, indexed by Y."""
@@ -222,8 +291,18 @@ class DirectPage(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} ${:02x}        [00:DPR+{:02x}]".format(
+        return "{} ${:02x}".format(
             self.mnemonic, op8, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+
+        def str_fn(label=None):
+            assert label is None
+            return "[00:DP+{:02x}]".format(offset)
+
+        ti = TargetInfo(addr=None, str_fn=str_fn)
+        return ti
 
 class DirectPageX(InstructionType):
     """Direct Page, indexed by X."""
@@ -231,8 +310,17 @@ class DirectPageX(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} ${:02x},x      [00:DPR+{:02x}]+x".format(
-            self.mnemonic, op8, op8)
+        return "{} ${:02x},x".format(self.mnemonic, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+
+        def str_fn(label=None):
+            assert label is None
+            return "[00:DP+{:02x}]+x".format(offset)
+
+        ti = TargetInfo(addr=None, str_fn=str_fn)
+        return ti
 
 class DirectPageY(InstructionType):
     """Direct Page, indexed by Y."""
@@ -240,7 +328,7 @@ class DirectPageY(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} ${:02x},y      [00:DPR+{:02x}]+y".format(
+        return "{} ${:02x},y      [00:DP+{:02x}]+y".format(
             self.mnemonic, op8, op8)
 
 class DPInd(InstructionType):
@@ -249,7 +337,7 @@ class DPInd(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} (${:02x})      [DBR:(00:DPR+{:02x})]".format(
+        return "{} (${:02x})      [DBR:(00:DP+{:02x})]".format(
             self.mnemonic, op8, op8)
 
 class DPIndLong(InstructionType):
@@ -258,7 +346,7 @@ class DPIndLong(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} [${:02x}]     [(00:DPR+{:02x})]".format(
+        return "{} [${:02x}]     [(00:DP+{:02x})]".format(
             self.mnemonic, op8, op8)
 
 class DPIndY(InstructionType):
@@ -267,8 +355,23 @@ class DPIndY(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} (${:02x}),y   [DBR:(00:DPR+{:02x})]+y".format(
+        return "{} (${:02x}),y".format(
             self.mnemonic, op8, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+        if state.dbr is None:
+            dbr_str = "DBR"
+        else:
+            dbr_str = "{:02x}".format(state.dbr)
+
+        def str_fn(label=None):
+            assert label is None
+            return "[{dbr}:(00:DP+{offset:02x})]+y".format(
+                dbr=dbr_str, offset=offset)
+
+        ti = TargetInfo(addr=None, str_fn=str_fn)
+        return ti
 
 class DPIndLongY(InstructionType):
     """(Direct Page indirect) long, indexed by Y."""
@@ -276,8 +379,18 @@ class DPIndLongY(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} [${:02x}],y   [(00:DPR+{:02x})]+y".format(
+        return "{} [${:02x}],y".format(
             self.mnemonic, op8, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+
+        def str_fn(label=None):
+            assert label is None
+            return "[(00:DP+{offset:02x})]+y".format(offset=offset)
+
+        ti = TargetInfo(addr=None, str_fn=str_fn)
+        return ti
 
 class DPXInd(InstructionType):
     """(Direct Page, indexed by X) indirect."""
@@ -285,7 +398,7 @@ class DPXInd(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} (${:02x},x)   [DBR:(00:DPR+{:02x}+x)]".format(
+        return "{} (${:02x},x)   [DBR:(00:DP+{:02x}+x)]".format(
             self.mnemonic, op8, op8)
 
 class BlockMove(InstructionType):
@@ -302,6 +415,9 @@ class Implied(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         return self.mnemonic
 
+    def target_info(self, addr, state, op0, op1, op2):
+        return NULL_TARGET_INFO
+
 class Accumulator(Implied):
     """Currently as Implied, may need to do special case later."""
     pass
@@ -316,8 +432,16 @@ class StackRelative(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} ${:02x},s      [00:SP+{:02x}]".format(
+        return "{} ${:02x},s".format(
             self.mnemonic, op8, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        op8 = op0
+        def str_fn(label=None):
+            assert label is None
+            return "[00:SP+{:02x}]".format(op8)
+
+        return TargetInfo(addr=None, str_fn=str_fn)
 
 class StackRelativeIndY(InstructionType):
     """(Stack pointer + offset) indirect, indexed by Y."""
@@ -325,8 +449,21 @@ class StackRelativeIndY(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} (${:02x},s),y [DBR:(SP+{:02x})]+y".format(
-            self.mnemonic, op8, op8)
+        return "{} (${:02x},s),y".format(self.mnemonic, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+        if state.dbr is not None:
+            dbr_str = "{:02x}".format(state.dbr)
+        else:
+            dbr_str = "DBR"
+
+        def str_fn(label=None):
+            assert label is None
+            return "[{dbr}:(SP+{offset:02x})]+y".format(
+                dbr=dbr_str, offset=offset)
+
+        return TargetInfo(addr=None, str_fn=str_fn)
 
 class PushEffectiveAbs(Absolute):
     """Push 16b of data to stack."""
@@ -469,8 +606,20 @@ class BranchCond(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         target = self.calc_target(addr, op8)
-        return "{} ${:04x}     [{:06x}]".format(
+        return "{} ${:04x}".format(
             self.mnemonic, target & 0xFFFF, target)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        op8 = op0
+        tgt_addr = self.calc_target(addr, op8)
+
+        def str_fn(label=None):
+            if label is None:
+                label = "{:06x}".format(tgt_addr)
+            return "[{}]".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
 
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
@@ -500,8 +649,20 @@ class BranchAlways(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         target = self.calc_target(addr, op8)
-        return "{} ${:04x}     [{:06x}]".format(
+        return "{} ${:04x}".format(
             self.mnemonic, target & 0xFFFF, target)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        op8 = op0
+        tgt_addr = self.calc_target(addr, op8)
+
+        def str_fn(label=None):
+            if label is None:
+                label = "{:06x}".format(tgt_addr)
+            return "[{}]".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
 
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
@@ -525,8 +686,19 @@ class BranchAlwaysLong(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         target = self.calc_target(addr, op16)
-        return "{} ${:04x}      [{:06x}]".format(
-            self.mnemonic, target & 0xFFFF, target)
+        return "{} ${:04x}".format(self.mnemonic, target & 0xFFFF)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        op16 = op0 | (op1 << 8)
+        tgt_addr = self.calc_target(addr, op16)
+
+        def str_fn(label=None):
+            if label is None:
+                label = "{:06x}".format(tgt_addr)
+            return "[{}]".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
 
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""

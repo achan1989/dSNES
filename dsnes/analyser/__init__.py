@@ -82,11 +82,23 @@ class Analyser:
         # disassembly = sorted(self.disassembly, key=lambda x: x.addr)
         disassembly = self.disassembly
         for item in disassembly:
-            # asm string is 34 long
-            s = "{pbr:02x}:{pc:04x}:{raw:<11}  {asm:<34s}    {state}".format(
+
+            # Try to replace an address with a label.
+            target_info = item.target_info
+            target_addr, str_fn = target_info
+            label = None
+            if target_addr:
+                label = self.get_label_for(target_addr)
+            tgt_str = str_fn(label)
+
+            s = "{pbr:02x}:{pc:04x}:{raw:<11}  {asm:<15s}   {target:<18s}   {state}".format(
                 pbr=(item.addr & 0xFF0000) >> 16,
                 pc=item.addr & 0xFFFF,
                 raw=" ".join([format(n, "02x") for n in item.raw]),
                 asm=item.asm_str,
+                target=tgt_str,
                 state=item.state.encode())
             print(s)
+
+    def get_label_for(self, addr):
+        return "potato"
