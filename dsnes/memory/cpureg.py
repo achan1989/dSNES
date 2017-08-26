@@ -43,6 +43,9 @@ reg_map = {
     0x421e: "rcJOY4L",
     0x421f: "rcJOY4H",
 }
+# Sanity check.
+assert len(reg_map.keys()) == 36
+assert len(set(reg_map.values())) == 36
 
 map_to_banks = ((0, 0x3f), (0x80, 0xbf))
 map_to_addresses = ((0x2180, 0x2183), (0x4016, 0x4017), (0x4200, 0x421f))

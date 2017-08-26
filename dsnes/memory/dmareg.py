@@ -99,6 +99,9 @@ reg_map = {
     0x4379: "rdA2A7H",
     0x437a: "rdNTRL7",
 }
+# Sanity check.
+assert len(reg_map.keys()) == 88
+assert len(set(reg_map.values())) == 88
 
 map_to_banks = ((0, 0x3f), (0x80, 0xbf))
 map_to_addresses = ((0x4300, 0x437f), )
