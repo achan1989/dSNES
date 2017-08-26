@@ -22,7 +22,7 @@ class Cartridge:
         self._load_wram(project)
         self._load_superfx(project)
         self.rom = self._load_rom(project)
-        self.ram = self._load_ram(project)
+        self._load_sram(project)
 
     @staticmethod
     def _load_rom(project):
@@ -30,21 +30,25 @@ class Cartridge:
         if config:
             filename = config["filename"]
             try:
-                size = int(config["size"], 0)
+                rom_size = int(config["size"], 0)
             except LookupError:
-                size = 0
+                rom_size = 0
             path = os.path.join(project.path, filename)
             maps = config["map"]
             assert len(maps) > 0, "Must map ROM somewhere"
 
             rom = dsnes.Rom()
-            rom.allocate(open(path, 'rb'), size=size)
+            rom.allocate(open(path, 'rb'), size=rom_size)
+            rom_size = rom.size
             for m in maps:
                 (bank_lo, bank_hi, addr_lo, addr_hi,
-                    size, base, mask) = parse_map(m)
+                    map_size, base, mask) = parse_map(m)
                 project.bus.map(
-                    bank_lo, bank_hi, addr_lo, addr_hi,
-                    size, base, mask, read_fn=rom.read)
+                    bank_lo=bank_lo, bank_hi=bank_hi,
+                    addr_lo=addr_lo, addr_hi=addr_hi,
+                    size=map_size or rom_size,
+                    base=base, mask=mask,
+                    read_fn=rom.read)
 
             return rom
 
@@ -57,15 +61,36 @@ class Cartridge:
             for m in maps:
                 (bank_lo, bank_hi, addr_lo, addr_hi,
                     size, base, mask) = parse_map(m)
+                assert (size, base, mask) == (0, 0, 0)
                 project.bus.map(
                     bank_lo=bank_lo, bank_hi=bank_hi,
                     addr_lo=addr_lo, addr_hi=addr_hi,
                     label_fn=dsnes.superfxreg.get_label)
 
     @staticmethod
-    def _load_ram(project):
-        # TODO
-        return None
+    def _load_sram(project):
+        config = project.config["ram"]
+        if config:
+            sram_size = int(config["size"], 0)
+            assert sram_size > 0
+            maps = config["map"]
+            assert len(maps) > 0, "Must map RAM somewhere"
+
+            def sram_label(addr):
+                if addr >= 0 and addr <= sram_size:
+                    return "sram_{:x}".format(addr)
+                else:
+                    return "INVALID_SRAM({:x})".format(addr)
+
+            for m in maps:
+                (bank_lo, bank_hi, addr_lo, addr_hi,
+                    map_size, base, mask) = parse_map(m)
+                project.bus.map(
+                    bank_lo=bank_lo, bank_hi=bank_hi,
+                    addr_lo=addr_lo, addr_hi=addr_hi,
+                    size=map_size or sram_size,
+                    base=base, mask=mask,
+                    label_fn=sram_label)
 
     @staticmethod
     def _load_apu(project):
