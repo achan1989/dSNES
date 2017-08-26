@@ -11,9 +11,11 @@ class Cartridge:
     def __init__(self):
         self.rom = None
         self.ram = None
+        self.cpu = None
 
     def load(self, project):
         assert os.path.isdir(project.path), "{} is not a directory".format(path)
+        self.cpu = self._load_cpu(project)
         self.rom = self._load_rom(project)
         self.ram = self._load_ram(project)
 
@@ -59,3 +61,12 @@ class Cartridge:
     def _load_ram(project):
         # TODO
         return None
+
+    @staticmethod
+    def _load_cpu(project):
+        for bank_lo, bank_hi in dsnes.cpureg.map_to_banks:
+            for addr_lo, addr_hi in dsnes.cpureg.map_to_addresses:
+                project.bus.map(
+                    bank_lo=bank_lo, bank_hi=bank_hi,
+                    addr_lo=addr_lo, addr_hi=addr_hi,
+                    label_fn=dsnes.cpureg.get_label)

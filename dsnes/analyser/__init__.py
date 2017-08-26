@@ -104,7 +104,26 @@ class Analyser:
             print(s)
 
     def get_label_for(self, addr):
-        return self.project.database.get_label(addr)
+        try:
+            hw_label = self.project.bus.get_label(addr)
+        except dsnes.UnmappedMemoryAccess:
+            hw_label = "UNMAPPED_{:06x}".format(addr)
+
+        # User labels can override the default hardware label.
+        user_label = self.project.database.get_label(addr)
+        if user_label:
+            return user_label
+        else:
+            return hw_label
 
     def get_labels_for(self, addr):
-        return self.project.database.get_labels(addr)
+        try:
+            hw_label = self.project.bus.get_label(addr)
+        except dsnes.UnmappedMemoryAccess:
+            hw_label = "UNMAPPED_{:06x}".format(addr)
+
+        # Is always at least an empty list.
+        user_labels = self.project.database.get_labels(addr)
+        if hw_label:
+            user_labels.append(hw_label)
+        return user_labels

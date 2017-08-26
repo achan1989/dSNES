@@ -7,7 +7,7 @@ from dsnes.bus import Bus
 from dsnes.cartridge import Cartridge
 from dsnes.disassembler import disassemble, NextAction
 from dsnes.cpustate import State
-from dsnes.memory import Rom
+from dsnes.memory import Rom, cpureg
 
 class UnmappedMemoryAccess(ValueError):
     pass
