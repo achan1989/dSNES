@@ -87,7 +87,7 @@ class State:
 
     def __repr__(self):
         code = self.encode()
-        if s:
+        if code:
             return "<{cls} {code}>".format(
                 cls=self.__class__.__name__,
                 code=code)

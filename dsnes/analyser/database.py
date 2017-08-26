@@ -13,7 +13,7 @@ def load(path):
 def encode_address_key(addr):
     assert addr > 0
     assert addr <= 0xFFFFFF
-    pbr = addr & 0xFF0000
+    pbr = (addr & 0xFF0000) >> 16
     pc = addr & 0x00FFFF
     return "{:02x}:{:04x}".format(pbr, pc)
 
