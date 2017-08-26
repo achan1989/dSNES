@@ -19,6 +19,7 @@ class Cartridge:
         self._load_cpu(project)
         self._load_dma(project)
         self._load_ppu(project)
+        self._load_wram(project)
         self.rom = self._load_rom(project)
         self.ram = self._load_ram(project)
 
@@ -100,3 +101,25 @@ class Cartridge:
                     bank_lo=bank_lo, bank_hi=bank_hi,
                     addr_lo=addr_lo, addr_hi=addr_hi,
                     label_fn=dsnes.ppureg.get_label)
+
+    @staticmethod
+    def _load_wram(project):
+        wram_size = 0x20000
+        small_map = 0x2000
+        large_map = wram_size
+        def wram_label(addr):
+            if addr >= 0 and addr <= wram_size:
+                return "wram_{:05x}".format(addr)
+            else:
+                return "INVALID_WRAM"
+        mappings = (
+            (0x00, 0x3f, 0, 0x1fff, small_map),
+            (0x80, 0xbf, 0, 0x1fff, small_map),
+            (0x7e, 0x7f, 0, 0xffff, large_map)
+        )
+        for bank_lo, bank_hi, addr_lo, addr_hi, size in mappings:
+            project.bus.map(
+                bank_lo=bank_lo, bank_hi=bank_hi,
+                addr_lo=addr_lo, addr_hi=addr_hi,
+                size=size,
+                label_fn=wram_label)
