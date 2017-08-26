@@ -15,6 +15,7 @@ class Cartridge:
 
     def load(self, project):
         assert os.path.isdir(project.path), "{} is not a directory".format(path)
+        self._load_apu(project)
         self._load_cpu(project)
         self._load_dma(project)
         self._load_ppu(project)
@@ -63,6 +64,15 @@ class Cartridge:
     def _load_ram(project):
         # TODO
         return None
+
+    @staticmethod
+    def _load_apu(project):
+        for bank_lo, bank_hi in dsnes.apureg.map_to_banks:
+            for addr_lo, addr_hi in dsnes.apureg.map_to_addresses:
+                project.bus.map(
+                    bank_lo=bank_lo, bank_hi=bank_hi,
+                    addr_lo=addr_lo, addr_hi=addr_hi,
+                    label_fn=dsnes.apureg.get_label)
 
     @staticmethod
     def _load_cpu(project):
