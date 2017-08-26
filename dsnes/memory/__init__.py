@@ -1,2 +1,2 @@
 from .rom import Rom
-from . import cpureg, dmareg
+from . import cpureg, dmareg, ppureg
