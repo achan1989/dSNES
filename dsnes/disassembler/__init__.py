@@ -498,6 +498,20 @@ class CallAbs(Absolute):
 
         return (NextAction.call, target, after_return)
 
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the CPU state after executing the instruction.
+
+        Return a modified State.
+        """
+        # Technically we don't know anything about the state after returning
+        # from a subroutine, but I'll assume that changing the emulation mode
+        # is unlikely.
+        state.m = None
+        state.x = None
+        state.c = None
+        state.dbr = None
+        return state
+
 class CallAbsLong(AbsLong):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
@@ -511,6 +525,20 @@ class CallAbsLong(AbsLong):
 
         return (NextAction.call, target, after_return)
 
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the CPU state after executing the instruction.
+
+        Return a modified State.
+        """
+        # Technically we don't know anything about the state after returning
+        # from a subroutine, but I'll assume that changing the emulation mode
+        # is unlikely.
+        state.m = None
+        state.x = None
+        state.c = None
+        state.dbr = None
+        return state
+
 class CallAbsXInd(AbsXInd):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
@@ -518,6 +546,20 @@ class CallAbsXInd(AbsXInd):
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
         assert self.nbytes is not None
         raise NotImplementedError()
+
+    def new_state(self, addr, state, op0, op1, op2):
+        """Get the CPU state after executing the instruction.
+
+        Return a modified State.
+        """
+        # Technically we don't know anything about the state after returning
+        # from a subroutine, but I'll assume that changing the emulation mode
+        # is unlikely.
+        state.m = None
+        state.x = None
+        state.c = None
+        state.dbr = None
+        return state
 
 class ReturnInt(Stack):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
