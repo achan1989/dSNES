@@ -22,7 +22,7 @@ class Analyser:
         self.calls = []
         self.visited = set()
 
-    def analyse_function(self, address, state_str=None):
+    def analyse_function(self, address, state_str=None, stop_before=None):
         self.reset()
         orig_addr = address
         bus = self.project.bus
@@ -70,12 +70,20 @@ class Analyser:
                 elif action is dsnes.NextAction.branch:
                     taken_addr, not_taken_addr = data
                     next_addr = not_taken_addr
+                    if taken_addr == stop_before:
+                        print_address(address)
+                        import pdb
+                        pdb.set_trace()
                     queue.append(taken_addr)
                 else:
                     raise NotImplementedError(
                         "Analyser can't handle {}".format(action))
 
                 self.visited.add(address)
+                if next_addr == stop_before:
+                    print_address(address)
+                    import pdb
+                    pdb.set_trace()
                 address = next_addr
 
     def display(self):
@@ -127,3 +135,8 @@ class Analyser:
         if hw_label:
             user_labels.append(hw_label)
         return user_labels
+
+
+def print_address(addr):
+    print("At {:02x}:{:04x}".format(
+        (address & 0xff0000) >> 16, address & 0xFFFF))
