@@ -69,8 +69,8 @@ class Analyser:
                     next_addr = after_return
                 elif action is dsnes.NextAction.branch:
                     taken_addr, not_taken_addr = data
-                    next_addr = taken_addr
-                    queue.append(not_taken_addr)
+                    next_addr = not_taken_addr
+                    queue.append(taken_addr)
                 else:
                     raise NotImplementedError(
                         "Analyser can't handle {}".format(action))
