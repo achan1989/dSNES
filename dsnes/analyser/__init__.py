@@ -87,12 +87,14 @@ class Analyser:
                 address = next_addr
 
     def display(self):
-        # disassembly = sorted(self.disassembly, key=lambda x: x.addr)
         disassembly = self.disassembly
         for item in disassembly:
-            # Print label(s) for this instruction.
+            # Print label(s) and comments for this instruction.
             for label in self.get_labels_for(item.addr):
                 print(label)
+            pre_comment = self.get_pre_comment_for(item.addr)
+            if pre_comment:
+                print(" ; {}".format(pre_comment))
 
             # Try to replace an address with a label.
             target_info = item.target_info
@@ -102,12 +104,17 @@ class Analyser:
                 label = self.get_label_for(target_addr)
             tgt_str = str_fn(label)
 
-            s = " {pbr:02x}:{pc:04x}:{raw:<11}  {asm:<15s}   {target:<18s}   {state}".format(
+            comment = self.get_inline_comment_for(item.addr)
+            if comment:
+                comment = "; {}".format(comment)
+
+            s = " {pbr:02x}:{pc:04x}:{raw:<11}  {asm:<15s}   {target:<18s}  {comment:<35s}   {state}".format(
                 pbr=(item.addr & 0xFF0000) >> 16,
                 pc=item.addr & 0xFFFF,
                 raw=" ".join([format(n, "02x") for n in item.raw]),
                 asm=item.asm_str,
                 target=tgt_str,
+                comment=comment,
                 state=item.state.encode())
             print(s)
 
@@ -135,6 +142,12 @@ class Analyser:
         if hw_label:
             user_labels.append(hw_label)
         return user_labels
+
+    def get_pre_comment_for(self, addr):
+        return self.project.database.get_pre_comment(addr)
+
+    def get_inline_comment_for(self, addr):
+        return self.project.database.get_inline_comment(addr) or ""
 
 
 def print_address(addr):

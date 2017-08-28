@@ -67,6 +67,16 @@ class Database:
         labels = self.data["labels"].get(key, [])
         return labels
 
+    def get_pre_comment(self, addr):
+        """Get the pre-instruction comment for an address."""
+        key = encode_address_key(addr)
+        return self.data["pre_comments"].get(key, None)
+
+    def get_inline_comment(self, addr):
+        """Get the inline comment for an address."""
+        key = encode_address_key(addr)
+        return self.data["inline_comments"].get(key, None)
+
     def load(self, path):
         self.path = path
         self.data = contoml.load(path)
