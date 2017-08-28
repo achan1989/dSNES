@@ -106,7 +106,7 @@ class Analyser:
                 label = self.get_label_for(target_addr)
             tgt_str = str_fn(label)
 
-            comment = self.get_inline_comment_for(item.addr)
+            comment = self.get_inline_comment_for(item)
             if comment:
                 comment = "; {}".format(comment)
 
@@ -148,8 +148,10 @@ class Analyser:
     def get_pre_comment_for(self, addr):
         return self.project.database.get_pre_comment(addr)
 
-    def get_inline_comment_for(self, addr):
-        return self.project.database.get_inline_comment(addr) or ""
+    def get_inline_comment_for(self, item):
+        user = self.project.database.get_inline_comment(item.addr)
+        default = item.default_comment
+        return user or default or ""
 
 
 def print_address(addr):

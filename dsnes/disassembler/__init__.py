@@ -17,7 +17,7 @@ from dsnes import util
 Disassembly = collections.namedtuple(
     "Disassembly",
     ["addr", "raw", "asm_str", "target_info", "state", "next_addr",
-     "new_state"])
+     "new_state", "default_comment"])
 
 TargetInfo = collections.namedtuple(
     "TargetInfo",
@@ -49,7 +49,8 @@ class InstructionType:
             target_info=self.target_info(addr, state, op0, op1, op2),
             state=state,
             next_addr=self.next_instruction_addr(addr, state, op0, op1, op2),
-            new_state=self.new_state(addr, state.clone(), op0, op1, op2)
+            new_state=self.new_state(addr, state.clone(), op0, op1, op2),
+            default_comment=self.get_default_comment(addr, state, op0, op1, op2)
         )
 
     def get_raw_bytes(self, addr, state, opcode, op0, op1, op2):
@@ -90,6 +91,13 @@ class InstructionType:
         # about.
         state.c = None
         return state
+
+    def get_default_comment(self, addr, state, op0, op1, op2):
+        """Get the default comment for this instruction.
+
+        Return the default_comment keyword argument if it was given, else None.
+        """
+        return self.default_comment
 
 # Basic addressing modes.
 
