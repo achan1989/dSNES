@@ -94,7 +94,9 @@ class Analyser:
                 print(label)
             pre_comment = self.get_pre_comment_for(item.addr)
             if pre_comment:
-                print(" ; {}".format(pre_comment))
+                lines = pre_comment.splitlines()
+                for line in lines:
+                    print(" ; {}".format(line))
 
             # Try to replace an address with a label.
             target_info = item.target_info
