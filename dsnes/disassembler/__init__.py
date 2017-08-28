@@ -247,7 +247,7 @@ class AbsLongX(InstructionType):
 
         def str_fn(label=None):
             if label is None:
-                return ""
+                label = "{:06x}".format(tgt_addr)
             return "[{}],x".format(label)
 
         ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
@@ -284,15 +284,50 @@ class AbsoluteY(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
-        return "{} ${:04x},y   [DBR:{:04x}]+y".format(self.mnemonic, op16, op16)
+        return "{} ${:04x},y".format(self.mnemonic, op16, op16)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        pc = op0 | (op1 << 8)
+        if state.dbr is None:
+            tgt_addr = None
+            addr_str = "DBR:{:04x}".format(pc)
+        else:
+            tgt_addr = (state.dbr << 16) | pc
+            addr_str = "{:06x}".format(tgt_addr)
+
+        def str_fn(label=None):
+            if label is None:
+                label = addr_str
+            return "[{}]+y".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
 
 class AbsXInd(InstructionType):
-    """(Absolute, indexed by X) indirect."""
+    """(Absolute, indexed by X) indirect.
+
+    Only used for jump/call."""
     nbytes = 3
 
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
-        return "{} (${:04x},x) [PBR:{:04x}+x]".format(self.mnemonic, op16, op16)
+        return "{} (${:04x},x)".format(self.mnemonic, op16)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        pbr = addr & 0xFF0000
+        pbr_str = "{:02x}".format(pbr >> 16)
+        ind_pc = op0 | (op1 << 8)
+        indirect_addr = pbr | ind_pc
+        indirect_str = "{:06x}".format(indirect_addr)
+
+        def str_fn(label=None):
+            if label is None:
+                label = indirect_str
+            return "[{pbr}:({label}+x)]".format(
+                pbr=pbr_str, label=label)
+
+        ti = TargetInfo(addr=indirect_addr, str_fn=str_fn)
+        return ti
 
 class DirectPage(InstructionType):
     nbytes = 2
@@ -330,6 +365,12 @@ class DirectPageX(InstructionType):
         ti = TargetInfo(addr=None, str_fn=str_fn)
         return ti
 
+    def get_default_comment(self, addr, state, op0, op1, op2):
+        comment = "Beware wrapping rules p102."
+        if self.default_comment:
+            comment += " {}".format(self.default_comment)
+        return comment
+
 class DirectPageY(InstructionType):
     """Direct Page, indexed by Y."""
     nbytes = 2
@@ -339,14 +380,44 @@ class DirectPageY(InstructionType):
         return "{} ${:02x},y      [00:DP+{:02x}]+y".format(
             self.mnemonic, op8, op8)
 
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+
+        def str_fn(label=None):
+            assert label is None
+            return "[00:DP+{:02x}]+y".format(offset)
+
+        ti = TargetInfo(addr=None, str_fn=str_fn)
+        return ti
+
+    def get_default_comment(self, addr, state, op0, op1, op2):
+        comment = "Beware wrapping rules p102."
+        if self.default_comment:
+            comment += " {}".format(self.default_comment)
+        return comment
+
 class DPInd(InstructionType):
     """Direct Page indirect."""
     nbytes = 2
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} (${:02x})      [DBR:(00:DP+{:02x})]".format(
-            self.mnemonic, op8, op8)
+        return "{} (${:02x})".format(self.mnemonic, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+        if state.dbr is None:
+            dbr_str = "DBR"
+        else:
+            dbr_str = "{:02x}".format(state.dbr)
+
+        def str_fn(label=None):
+            assert label is None
+            return "[{dbr_str}:(00:DP+{offset:02x})]".format(
+                dbr_str=dbr_str, offset=offset)
+
+        ti = TargetInfo(addr=None, str_fn=str_fn)
+        return ti
 
 class DPIndLong(InstructionType):
     """Direct Page indirect, long."""
@@ -354,8 +425,17 @@ class DPIndLong(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} [${:02x}]     [(00:DP+{:02x})]".format(
-            self.mnemonic, op8, op8)
+        return "{} [${:02x}]".format(self.mnemonic, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+
+        def str_fn(label=None):
+            assert label is None
+            return "[(00:DP+{:02x})]".format(offset)
+
+        ti = TargetInfo(addr=None, str_fn=str_fn)
+        return ti
 
 class DPIndY(InstructionType):
     """(Direct Page indirect), indexed by Y."""
@@ -406,8 +486,28 @@ class DPXInd(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
-        return "{} (${:02x},x)   [DBR:(00:DP+{:02x}+x)]".format(
-            self.mnemonic, op8, op8)
+        return "{} (${:02x},x)".format(self.mnemonic, op8)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        offset = op0
+        if state.dbr is None:
+            dbr_str = "DBR"
+        else:
+            dbr_str = "{:02x}".format(state.dbr)
+
+        def str_fn(label=None):
+            assert label is None
+            return "[{dbr}:(00:DP+{offset:02x}+x)]".format(
+                dbr=dbr_str, offset=offset)
+
+        ti = TargetInfo(addr=None, str_fn=str_fn)
+        return ti
+
+    def get_default_comment(self, addr, state, op0, op1, op2):
+        comment = "Wrapping rules p163."
+        if self.default_comment:
+            comment += " {}".format(self.default_comment)
+        return comment
 
 class BlockMove(InstructionType):
     """Move a block of memory."""
@@ -489,9 +589,40 @@ class PushEffectiveRel(InstructionType):
         op16 = op0 | (op1 << 8)
         return "{} ${:04x}      [PC+{:04x}]".format(self.mnemonic, op16, op16)
 
+    def target_info(self, addr, state, op0, op1, op2):
+        pbr = addr & 0xFF0000
+        pc = addr & 0xFFFF
+        next_pc = (pc + self.nbytes) & 0xFFFF
+        op16 = op0 | (op1 << 8)
+        # Always wraps to 16b
+        data = (next_pc + op16) & 0xFFFF
+
+        def str_fn(label=None):
+            # Can't know if this is supposed to refer to code (PBR) or
+            # data (DBR).
+            assert label is None
+            return "[{:04x}]"
+
+        return TargetInfo(addr=None, str_fn=str_fn)
+
 # Special cases, or derived from basic addressing modes.
 
 class CallAbs(Absolute):
+    def target_info(self, addr, state, op0, op1, op2):
+        pbr = addr & 0xFF0000
+        pbr_str = "{:02x}".format(pbr << 16)
+        pc = op0 | (op1 << 8)
+        tgt_addr = pbr | pc
+        addr_str = "{:06x}".format(tgt_addr)
+
+        def str_fn(label=None):
+            if label is None:
+                label = addr_str
+            return "[{}]".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
+
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Call into the 16b address provided. This is in the same program
@@ -550,10 +681,14 @@ class CallAbsLong(AbsLong):
 class CallAbsXInd(AbsXInd):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        # We can't tell where the call goes.
+        target = None
+        # Return address from the call.
+        base = super().next_instruction_addr(addr, state, op0, op1, op2)
+        assert base[0] == NextAction.step
+        after_return = base[1]
+
+        return (NextAction.call, target, after_return)
 
     def new_state(self, addr, state, op0, op1, op2):
         """Get the CPU state after executing the instruction.
@@ -572,28 +707,34 @@ class CallAbsXInd(AbsXInd):
 class ReturnInt(Stack):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        return (NextAction.ret, )
 
 class ReturnSub(Stack):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        return (NextAction.ret, )
 
 class ReturnSubLong(Stack):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        return (NextAction.ret, )
 
 class JumpAbs(Absolute):
+    def target_info(self, addr, state, op0, op1, op2):
+        pbr = addr & 0xFF0000
+        pbr_str = "{:02x}".format(pbr >> 16)
+        pc = op0 | (op1 << 8)
+        tgt_addr = pbr | pc
+        addr_str = "{:06x}".format(tgt_addr)
+
+        def str_fn(label=None):
+            if label is None:
+                label = addr_str
+            return "[{}]".format(label)
+
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
+        return ti
+
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
         # Jump to the 16b address provided. This is in the same program
@@ -608,31 +749,59 @@ class JumpAbsInd(InstructionType):
     """Jump to 16b address in (bank 0 + offset) indirect."""
     nbytes = 3
 
+    def asm_str(self, addr, state, op0, op1, op2):
+        op16 = op0 | (op1 << 8)
+        return "{} (${:04x})".format(self.mnemonic, op16)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        pbr = addr & 0xFF0000
+        pbr_str = "{:02x}".format(pbr >> 16)
+        ind_addr = op0 | (op1 << 8)
+
+        def str_fn(label=None):
+            if label is None:
+                label = "00:{:04x}".format(ind_addr)
+            return "[{pbr}:({label})]".format(
+                pbr=pbr_str, label=label)
+
+        return TargetInfo(addr=ind_addr, str_fn=str_fn)
+
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        # Don't know where the jump goes.
+        return (NextAction.jump, None)
 
 class JumpAbsIndLong(InstructionType):
     """Jump to 24b address in (bank 0 + offset) indirect."""
     nbytes = 3
 
+    def asm_str(self, addr, state, op0, op1, op2):
+        op16 = op0 | (op1 << 8)
+        return "{} [${:04x}]".format(self.mnemonic, op16)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        pbr = addr & 0xFF0000
+        pbr_str = "{:02x}".format(pbr >> 16)
+        ind_addr = op0 | (op1 << 8)
+
+        def str_fn(label=None):
+            if label is None:
+                label = "00:{:04x}".format(ind_addr)
+            return "[{pbr}:({label})]".format(
+                pbr=pbr_str, label=label)
+
+        return TargetInfo(addr=ind_addr, str_fn=str_fn)
+
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        # Don't know where the jump goes.
+        return (NextAction.jump, None)
 
 class JumpAbsXInd(AbsXInd):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
         """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError()
+        # Don't know where the jump goes.
+        return (NextAction.jump, None)
 
 class JumpAbsLong(AbsLong):
     def next_instruction_addr(self, addr, state, op0, op1, op2):
@@ -763,7 +932,7 @@ class Interrupt(InstructionType):
         # Most instructions can't cross bank boundaries. If the PC increments
         # past 0xFFFF it rolls over to 0x0000 without changing PBR.
         assert self.nbytes is not None
-        raise NotImplementedError()
+        raise NotImplementedError("Interrupt")
 
 class RFU(Implied):
     """Reserved for future use."""
@@ -1070,7 +1239,7 @@ codes = {
 0x5f: AbsLongX("eor"), # ("eor $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 0x60: ReturnSub("rts"), # ("rts                   "),
 0x61: DPXInd("adc"), # ("adc ($%.2x,x)   [%.6x]", op8, decode(OPTYPE_IDPX, op8)),
-0x62: PushEffectiveRel("per", default_comment="TODO"), # ("per $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
+0x62: PushEffectiveRel("per", default_comment="Push 16b [nextPC+offset], TODO validate"), # ("per $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
 0x63: StackRelative("adc"), # ("adc $%.2x,s     [%.6x]", op8, decode(OPTYPE_SR, op8)),
 0x64: DirectPage("stz"), # ("stz $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
 0x65: DirectPage("adc"), # ("adc $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
@@ -1184,7 +1353,7 @@ codes = {
 0xd1: DPIndY("cmp"), # ("cmp ($%.2x),y   [%.6x]", op8, decode(OPTYPE_IDPY, op8)),
 0xd2: DPInd("cmp"), # ("cmp ($%.2x)     [%.6x]", op8, decode(OPTYPE_IDP, op8)),
 0xd3: StackRelativeIndY("cmp"), # ("cmp ($%.2x,s),y [%.6x]", op8, decode(OPTYPE_ISRY, op8)),
-0xd4: PushEffectiveInd("pei", default_comment="TODO"), # ("pei ($%.2x)     [%.6x]", op8, decode(OPTYPE_IDP, op8)),
+0xd4: PushEffectiveInd("pei", default_comment="Push 16b as per DP ind, TODO: validate"), # ("pei ($%.2x)     [%.6x]", op8, decode(OPTYPE_IDP, op8)),
 0xd5: DirectPageX("cmp"), # ("cmp $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0xd6: DirectPageX("dec"), # ("dec $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0xd7: DPIndLongY("cmp"), # ("cmp [$%.2x],y   [%.6x]", op8, decode(OPTYPE_ILDPY, op8)),
@@ -1216,7 +1385,7 @@ codes = {
 0xf1: DPIndY("sbc"), # ("sbc ($%.2x),y   [%.6x]", op8, decode(OPTYPE_IDPY, op8)),
 0xf2: DPInd("sbc"), # ("sbc ($%.2x)     [%.6x]", op8, decode(OPTYPE_IDP, op8)),
 0xf3: StackRelativeIndY("sbc"), # ("sbc ($%.2x,s),y [%.6x]", op8, decode(OPTYPE_ISRY, op8)),
-0xf4: PushEffectiveAbs("pea", default_comment="TODO"), # ("pea $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
+0xf4: PushEffectiveAbs("pea", default_comment="Push 16b of data, TODO: validate"), # ("pea $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
 0xf5: DirectPageX("sbc"), # ("sbc $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0xf6: DirectPageX("inc"), # ("inc $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0xf7: DPIndLongY("sbc"), # ("sbc [$%.2x],y   [%.6x]", op8, decode(OPTYPE_ILDPY, op8)),
