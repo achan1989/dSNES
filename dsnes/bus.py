@@ -38,6 +38,8 @@ class Bus:
         assert idx < 256, "Too many mappings"
 
         reduce_fn = make_reduce_fn(mask)
+        if size:
+            mirror_fn = make_mirror_fn(size - base)
 
         for bank in range(bank_lo, bank_hi+1):
             pbr = bank << 16
@@ -48,7 +50,7 @@ class Bus:
 
                 offset = reduce_fn(target_addr, mask)
                 if size:
-                    offset = base + mirror(offset, size - base)
+                    offset = base + mirror_fn(offset)
                 self.lookup[target_addr] = idx
                 self.target[target_addr] = offset
 
@@ -86,6 +88,8 @@ def make_reduce_fn(mask):
     Return a function that calculates the effective address seen by the
     memory device based on a given CPU address and device mask.
     """
+    # Have validated that these optimized versions are equivalent to the
+    # slower generic version.
     if mask == 0:
         def reduce_fn(addr, mask):
             return addr
@@ -98,31 +102,48 @@ def make_reduce_fn(mask):
         def reduce_fn(addr, mask):
             while mask:
                 bits = (mask & -mask) - 1
-                print("bits: {:x}".format(bits))
                 addr = ((addr >> 1) & ~bits) | (addr & bits)
                 mask = (mask & (mask - 1)) >> 1
             return addr
 
     return reduce_fn
 
-def mirror(addr, size):
-    """Presumably accounting for the way that some memory devices are
-    mirrored in the the memory map.  I don't really know how this works...
+def make_mirror_fn(size):
+    """Make a function that resolves a device address (handles mirroring).
+
+    If the given device address is larger than the actual size of the device
+    then the address "wraps" until it falls into a valid range?
+    I think this is just modulo for some cases, but I'm not sure in exactly
+    what circumstances it becomes more complicated.
     """
     assert size > 0
-    base = 0
-    mask = 1 << 23
-    while addr >= size:
-        while not (addr & mask):
-            mask = mask >> 1
 
-        addr -= mask
-        if size > mask:
-            size -= mask
-            base += mask
-        mask = mask >> 1
+    # Have validated that these optimized versions are equivalent to the
+    # slower generic version.
+    simple_modulo = (0x2000, 0x8000, 0x20000, 0x100000)
+    if size in simple_modulo:
+        def mirror_fn(addr):
+            return addr % size
 
-    return base + addr
+    else:
+        size_capture = size
+        def mirror_fn(addr):
+            size = size_capture
+            base = 0
+            mask = 1 << 23
+            while addr >= size:
+                while not (addr & mask):
+                    mask = mask >> 1
+
+                addr -= mask
+                if size > mask:
+                    size -= mask
+                    base += mask
+                mask = mask >> 1
+
+            return base + addr
+
+    return mirror_fn
 
 def default_read_fn(addr):
     raise TypeError("No read function for memory at 0x{:x}".format(addr))
