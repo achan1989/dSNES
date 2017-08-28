@@ -808,6 +808,23 @@ class REP(Immediate8):
 
         return state
 
+    def get_default_comment(self, addr, state, op0, op1, op2):
+        """Get the default comment for this instruction.
+
+        Default comment says which flags were cleared.
+        """
+        op8 = op0
+        flags = {
+            "m": 0b00100000,
+            "x": 0b00010000,
+            "c": 0b00000001
+        }
+        was_clr = [letter for letter, mask in flags.items() if bool(op8 & mask)]
+        if was_clr:
+            return "Clear {}".format("/".join(was_clr))
+        else:
+            return None
+
 class SEP(Immediate8):
     """Special handling of the SEP opcode."""
     def new_state(self, addr, state, op0, op1, op2):
@@ -846,6 +863,23 @@ class SEP(Immediate8):
             state.c = True
 
         return state
+
+    def get_default_comment(self, addr, state, op0, op1, op2):
+        """Get the default comment for this instruction.
+
+        Default comment says which flags were set.
+        """
+        op8 = op0
+        flags = {
+            "m": 0b00100000,
+            "x": 0b00010000,
+            "c": 0b00000001
+        }
+        was_set = [letter for letter, mask in flags.items() if bool(op8 & mask)]
+        if was_set:
+            return "Set {}".format("/".join(was_set))
+        else:
+            return None
 
 class PLP(Stack):
     """Special handling of the PLP opcode."""
@@ -1026,7 +1060,7 @@ codes = {
 0x55: DirectPageX("eor"), # ("eor $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0x56: DirectPageX("lsr"), # ("lsr $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0x57: DPIndLongY("eor"), # ("eor [$%.2x],y   [%.6x]", op8, decode(OPTYPE_ILDPY, op8)),
-0x58: Implied("cli", default_comment="Clear interrupt-disable"), # ("cli                   "),
+0x58: Implied("cli", default_comment="Enable interrupts"), # ("cli                   "),
 0x59: AbsoluteY("eor"), # ("eor $%.4x,y   [%.6x]", op16, decode(OPTYPE_ADDRY, op16)),
 0x5a: Stack("phy"), # ("phy                   "),
 0x5b: Implied("tcd", default_comment="Transfer 16b acc to DP reg"), # ("tcd                   "),
@@ -1058,7 +1092,7 @@ codes = {
 0x75: DirectPageX("adc"), # ("adc $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0x76: DirectPageX("ror"), # ("ror $%.2x,x     [%.6x]", op8, decode(OPTYPE_DPX, op8)),
 0x77: DPIndLongY("adc"), # ("adc [$%.2x],y   [%.6x]", op8, decode(OPTYPE_ILDPY, op8)),
-0x78: Implied("sei", default_comment="Set interrupt-disable"), # ("sei                   "),
+0x78: Implied("sei", default_comment="Disable interrupts"), # ("sei                   "),
 0x79: AbsoluteY("adc"), # ("adc $%.4x,y   [%.6x]", op16, decode(OPTYPE_ADDRY, op16)),
 0x7a: Stack("ply"), # ("ply                   "),
 0x7b: Implied("tdc", default_comment="Transfer DP reg to 16b acc"), # ("tdc                   "),
@@ -1132,7 +1166,7 @@ codes = {
 0xbf: AbsLongX("lda"), # ("lda $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 0xc0: ImmediateAmbiguous("cpy", "x8"), # (     ("cpy #$%.2x              ", op8) if x8 else ("cpy #$%.4x            ", op16)),
 0xc1: DPXInd("cmp"), # ("cmp ($%.2x,x)   [%.6x]", op8, decode(OPTYPE_IDPX, op8)),
-0xc2: REP("rep", default_comment="Reset status bits"), # ("rep #$%.2x              ", op8),
+0xc2: REP("rep"), # ("rep #$%.2x              ", op8),
 0xc3: StackRelative("cmp"), # ("cmp $%.2x,s     [%.6x]", op8, decode(OPTYPE_SR, op8)),
 0xc4: DirectPage("cpy"), # ("cpy $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
 0xc5: DirectPage("cmp"), # ("cmp $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
@@ -1164,7 +1198,7 @@ codes = {
 0xdf: AbsLongX("cmp"), # ("cmp $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 0xe0: ImmediateAmbiguous("cpx", "x8"), # (     ("cpx #$%.2x              ", op8) if x8 else ("cpx #$%.4x            ", op16)),
 0xe1: DPXInd("sbc"), # ("sbc ($%.2x,x)   [%.6x]", op8, decode(OPTYPE_IDPX, op8)),
-0xe2: SEP("sep", default_comment="Set status bits"), # manual instruction list has a misprint, it's really sep ("sep #$%.2x              ", op8),
+0xe2: SEP("sep"), # manual instruction list has a misprint, it's really sep ("sep #$%.2x              ", op8),
 0xe3: StackRelative("sbc"), # ("sbc $%.2x,s     [%.6x]", op8, decode(OPTYPE_SR, op8)),
 0xe4: DirectPage("cpx"), # manual instruction list has a misprint, it's really cpx. ("cpx $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
 0xe5: DirectPage("sbc"), # ("sbc $%.2x       [%.6x]", op8, decode(OPTYPE_DP, op8)),
@@ -1189,7 +1223,7 @@ codes = {
 0xf8: Implied("sed", default_comment="Set decimal mode"), # ("sed                   "),
 0xf9: AbsoluteY("sbc"), # ("sbc $%.4x,y   [%.6x]", op16, decode(OPTYPE_ADDRY, op16)),
 0xfa: Stack("plx"), # ("plx                   "),
-0xfb: XCE("xce", default_comment="Exchange carry and emulation bits"), # ("xce                   "),
+0xfb: XCE("xce"), # ("xce                   "),
 0xfc: CallAbsXInd("jsr"), # ("jsr ($%.4x,x) [%.6x]", op16, decode(OPTYPE_IADDRX, op16)),
 0xfd: AbsoluteX("sbc"), # ("sbc $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
 0xfe: AbsoluteX("inc"), # ("inc $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
