@@ -359,12 +359,22 @@ class DirectPage(InstructionType):
 
     def target_info(self, addr, state, op0, op1, op2):
         offset = op0
+        if state.e is not False:
+            raise NotImplementedError(
+                "Calculating DP offset in emulation mode")
+        if state.dp is None:
+            tgt_addr = None
+            dp_str = "00:DP+{:02x}".format(offset)
+        else:
+            tgt_addr = (state.dp + offset) & 0xFFFF
+            dp_str = "{:06x}".format(tgt_addr)
 
         def str_fn(label=None):
-            assert label is None
-            return "[00:DP+{:02x}]".format(offset)
+            if label is None:
+                label = dp_str
+            return "[{label}]".format(label=label)
 
-        ti = TargetInfo(addr=None, str_fn=str_fn)
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
 class DirectPageX(InstructionType):
@@ -377,12 +387,22 @@ class DirectPageX(InstructionType):
 
     def target_info(self, addr, state, op0, op1, op2):
         offset = op0
+        if state.e is not False:
+            raise NotImplementedError(
+                "Calculating DP offset in emulation mode")
+        if state.dp is None:
+            tgt_addr = None
+            dp_str = "00:DP+{:02x}".format(offset)
+        else:
+            tgt_addr = (state.dp + offset) & 0xFFFF
+            dp_str = "{:06x}".format(tgt_addr)
 
         def str_fn(label=None):
-            assert label is None
-            return "[00:DP+{:02x}]+x".format(offset)
+            if label is None:
+                label = dp_str
+            return "[{label}]+x".format(label=label)
 
-        ti = TargetInfo(addr=None, str_fn=str_fn)
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
     def get_default_comment(self, addr, state, op0, op1, op2):
@@ -405,12 +425,22 @@ class DirectPageY(InstructionType):
 
     def target_info(self, addr, state, op0, op1, op2):
         offset = op0
+        if state.e is not False:
+            raise NotImplementedError(
+                "Calculating DP offset in emulation mode")
+        if state.dp is None:
+            tgt_addr = None
+            dp_str = "00:DP+{:02x}".format(offset)
+        else:
+            tgt_addr = (state.dp + offset) & 0xFFFF
+            dp_str = "{:06x}".format(tgt_addr)
 
         def str_fn(label=None):
-            assert label is None
-            return "[00:DP+{:02x}]+y".format(offset)
+            if label is None:
+                label = dp_str
+            return "[{label}]+y".format(label=label)
 
-        ti = TargetInfo(addr=None, str_fn=str_fn)
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
     def get_default_comment(self, addr, state, op0, op1, op2):
@@ -438,13 +468,20 @@ class DPInd(InstructionType):
             dbr_str = "DBR"
         else:
             dbr_str = "{:02x}".format(state.dbr)
+        if state.dp is None:
+            tgt_addr = None
+            dp_str = "00:DP+{:02x}".format(offset)
+        else:
+            tgt_addr = (state.dp + offset) & 0xFFFF
+            dp_str = "{:06x}".format(tgt_addr)
 
         def str_fn(label=None):
-            assert label is None
-            return "[{dbr_str}:(00:DP+{offset:02x})]".format(
-                dbr_str=dbr_str, offset=offset)
+            if label is None:
+                label = dp_str
+            return "[{dbr}:({label})]".format(
+                dbr=dbr_str, label=label)
 
-        ti = TargetInfo(addr=None, str_fn=str_fn)
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
 class DPIndLong(InstructionType):
@@ -460,12 +497,19 @@ class DPIndLong(InstructionType):
 
     def target_info(self, addr, state, op0, op1, op2):
         offset = op0
+        if state.dp is None:
+            tgt_addr = None
+            dp_str = "00:DP+{:02x}".format(offset)
+        else:
+            tgt_addr = (state.dp + offset) & 0xFFFF
+            dp_str = "{:06x}".format(tgt_addr)
 
         def str_fn(label=None):
-            assert label is None
-            return "[(00:DP+{:02x})]".format(offset)
+            if label is None:
+                label = dp_str
+            return "[({label})]".format(label=label)
 
-        ti = TargetInfo(addr=None, str_fn=str_fn)
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
 class DPIndY(InstructionType):
@@ -482,17 +526,27 @@ class DPIndY(InstructionType):
 
     def target_info(self, addr, state, op0, op1, op2):
         offset = op0
+        if state.e is not False:
+            raise NotImplementedError(
+                "Calculating DP offset in emulation mode")
         if state.dbr is None:
             dbr_str = "DBR"
         else:
             dbr_str = "{:02x}".format(state.dbr)
+        if state.dp is None:
+            tgt_addr = None
+            dp_str = "00:DP+{:02x}".format(offset)
+        else:
+            tgt_addr = (state.dp + offset) & 0xFFFF
+            dp_str = "{:06x}".format(tgt_addr)
 
         def str_fn(label=None):
-            assert label is None
-            return "[{dbr}:(00:DP+{offset:02x})]+y".format(
-                dbr=dbr_str, offset=offset)
+            if label is None:
+                label = dp_str
+            return "[{dbr}:({label})]+y".format(
+                dbr=dbr_str, label=label)
 
-        ti = TargetInfo(addr=None, str_fn=str_fn)
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
 class DPIndLongY(InstructionType):
@@ -509,12 +563,19 @@ class DPIndLongY(InstructionType):
 
     def target_info(self, addr, state, op0, op1, op2):
         offset = op0
+        if state.dp is None:
+            tgt_addr = None
+            dp_str = "00:DP+{:02x}".format(offset)
+        else:
+            tgt_addr = (state.dp + offset) & 0xFFFF
+            dp_str = "{:06x}".format(tgt_addr)
 
         def str_fn(label=None):
-            assert label is None
-            return "[(00:DP+{offset:02x})]+y".format(offset=offset)
+            if label is None:
+                label = dp_str
+            return "[({label})]+y".format(label=label)
 
-        ti = TargetInfo(addr=None, str_fn=str_fn)
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
 class DPXInd(InstructionType):
@@ -527,17 +588,27 @@ class DPXInd(InstructionType):
 
     def target_info(self, addr, state, op0, op1, op2):
         offset = op0
+        if state.e is not False:
+            raise NotImplementedError(
+                "Calculating DP offset in emulation mode")
         if state.dbr is None:
             dbr_str = "DBR"
         else:
             dbr_str = "{:02x}".format(state.dbr)
+        if state.dp is None:
+            tgt_addr = None
+            dp_str = "00:DP+{:02x}".format(offset)
+        else:
+            tgt_addr = (state.dp + offset) & 0xFFFF
+            dp_str = "{:06x}".format(tgt_addr)
 
         def str_fn(label=None):
-            assert label is None
-            return "[{dbr}:(00:DP+{offset:02x}+x)]".format(
-                dbr=dbr_str, offset=offset)
+            if label is None:
+                label = dp_str
+            return "[{dbr}:({label}+x)]".format(
+                dbr=dbr_str, label=label)
 
-        ti = TargetInfo(addr=None, str_fn=str_fn)
+        ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
     def get_default_comment(self, addr, state, op0, op1, op2):
