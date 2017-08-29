@@ -232,7 +232,7 @@ class AbsLong(InstructionType):
         def str_fn(label=None):
             if label is None:
                 label = "{:06x}".format(tgt_addr)
-            return "[{}]".format(label)
+            return "[[{}]]".format(label)
 
         ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
@@ -254,7 +254,7 @@ class AbsLongX(InstructionType):
         def str_fn(label=None):
             if label is None:
                 label = "{:06x}".format(tgt_addr)
-            return "[{}],x".format(label)
+            return "[[{}]],x".format(label)
 
         ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
@@ -507,7 +507,7 @@ class DPIndLong(InstructionType):
         def str_fn(label=None):
             if label is None:
                 label = dp_str
-            return "[({label})]".format(label=label)
+            return "[([{label}])]".format(label=label)
 
         ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
@@ -573,7 +573,7 @@ class DPIndLongY(InstructionType):
         def str_fn(label=None):
             if label is None:
                 label = dp_str
-            return "[({label})]+y".format(label=label)
+            return "[([{label}])]+y".format(label=label)
 
         ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
@@ -903,15 +903,12 @@ class JumpAbsIndLong(InstructionType):
         return "{} [${:04x}]".format(self.mnemonic, op16)
 
     def target_info(self, addr, state, op0, op1, op2):
-        pbr = addr & 0xFF0000
-        pbr_str = "{:02x}".format(pbr >> 16)
         ind_addr = op0 | (op1 << 8)
 
         def str_fn(label=None):
             if label is None:
                 label = "00:{:04x}".format(ind_addr)
-            return "[{pbr}:({label})]".format(
-                pbr=pbr_str, label=label)
+            return "[([{label}])]".format(label=label)
 
         return TargetInfo(addr=ind_addr, str_fn=str_fn)
 
