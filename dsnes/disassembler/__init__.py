@@ -221,6 +221,9 @@ class AbsLong(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
+        if state.e is not False:
+            raise ValueError(
+                "AbsLong address mode only available in native mode")
         return "{} ${:06x}".format(self.mnemonic, op24)
 
     def target_info(self, addr, state, op0, op1, op2):
@@ -240,6 +243,9 @@ class AbsLongX(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
+        if state.e is not False:
+            raise ValueError(
+                "AbsLongX address mode only available in native mode")
         return "{} ${:06x},x".format(self.mnemonic, op24)
 
     def target_info(self, addr, state, op0, op1, op2):
@@ -278,6 +284,13 @@ class AbsoluteX(InstructionType):
         ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
 
+    def get_default_comment(self, *args):
+        comment = "Can cross banks."
+        dc = self.default_comment
+        if dc:
+            comment += " {}".format(dc)
+        return comment
+
 class AbsoluteY(InstructionType):
     """Absolute, indexed by Y."""
     nbytes = 3
@@ -302,6 +315,13 @@ class AbsoluteY(InstructionType):
 
         ti = TargetInfo(addr=tgt_addr, str_fn=str_fn)
         return ti
+
+    def get_default_comment(self, *args):
+        comment = "Can cross banks."
+        dc = self.default_comment
+        if dc:
+            comment += " {}".format(dc)
+        return comment
 
 class AbsXInd(InstructionType):
     """(Absolute, indexed by X) indirect.
@@ -366,7 +386,10 @@ class DirectPageX(InstructionType):
         return ti
 
     def get_default_comment(self, addr, state, op0, op1, op2):
-        comment = "Beware wrapping rules p102."
+        if state.e is False and state.x is False:
+            comment = "Target is masked 0xFFFF."
+        else:
+            comment = "Wrapping rules p102."
         if self.default_comment:
             comment += " {}".format(self.default_comment)
         return comment
@@ -391,7 +414,10 @@ class DirectPageY(InstructionType):
         return ti
 
     def get_default_comment(self, addr, state, op0, op1, op2):
-        comment = "Beware wrapping rules p102."
+        if state.e is False and state.x is False:
+            comment = "Target is masked 0xFFFF."
+        else:
+            comment = "Wrapping rules p102."
         if self.default_comment:
             comment += " {}".format(self.default_comment)
         return comment
@@ -402,6 +428,8 @@ class DPInd(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
+        if state.e is not False:
+            raise ValueError("DPInd address mode only available in native mode")
         return "{} (${:02x})".format(self.mnemonic, op8)
 
     def target_info(self, addr, state, op0, op1, op2):
@@ -425,6 +453,9 @@ class DPIndLong(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
+        if state.e is not False:
+            raise ValueError(
+                "DPIndLong address mode only available in native mode")
         return "{} [${:02x}]".format(self.mnemonic, op8)
 
     def target_info(self, addr, state, op0, op1, op2):
@@ -438,7 +469,10 @@ class DPIndLong(InstructionType):
         return ti
 
 class DPIndY(InstructionType):
-    """(Direct Page indirect), indexed by Y."""
+    """(Direct Page indirect), indexed by Y.
+
+    Indexing can cause the address to roll into the next bank.
+    """
     nbytes = 2
 
     def asm_str(self, addr, state, op0, op1, op2):
@@ -467,6 +501,9 @@ class DPIndLongY(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
+        if state.e is not False:
+            raise ValueError(
+                "DPIndLongY address mode only available in native mode")
         return "{} [${:02x}],y".format(
             self.mnemonic, op8, op8)
 
@@ -514,6 +551,9 @@ class BlockMove(InstructionType):
     nbytes = 3
 
     def asm_str(self, addr, state, op0, op1, op2):
+        if state.e is not False:
+            raise ValueError(
+                "BlockMove address mode only available in native mode")
         return "{} ${:02x},${:02x}".format(self.mnemonic, op1, op0)
         # TODO: could put additional info into this dasm.
 
@@ -540,6 +580,9 @@ class StackRelative(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
+        if state.e is not False:
+            raise ValueError(
+                "StackRelative address mode only available in native mode")
         return "{} ${:02x},s".format(
             self.mnemonic, op8, op8)
 
@@ -557,6 +600,9 @@ class StackRelativeIndY(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
+        if state.e is not False:
+            raise ValueError(
+                "StackRelativeIndY address mode only available in native mode")
         return "{} (${:02x},s),y".format(self.mnemonic, op8)
 
     def target_info(self, addr, state, op0, op1, op2):
@@ -777,6 +823,9 @@ class JumpAbsIndLong(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
+        if state.e is not False:
+            raise ValueError(
+                "JumpAbsIndLong address mode only available in native mode")
         return "{} [${:04x}]".format(self.mnemonic, op16)
 
     def target_info(self, addr, state, op0, op1, op2):
@@ -904,6 +953,9 @@ class BranchAlwaysLong(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
+        if state.e is not False:
+            raise ValueError(
+                "BranchAlwaysLong address mode only available in native mode")
         target = self.calc_target(addr, op16)
         return "{} ${:04x}".format(self.mnemonic, target & 0xFFFF)
 
