@@ -2,7 +2,7 @@
 # Licensed under GPLv3
 
 class State:
-    def __init__(self, e=None, m=None, x=None, c=None, dbr=None):
+    def __init__(self, e=None, m=None, x=None, c=None, dbr=None, dp=None):
         self.e = None
         if e is not None:
             self.e = bool(e)
@@ -24,9 +24,15 @@ class State:
             assert dbr >= 0 and dbr <= 0xff
             self.dbr = int(dbr)
 
+        self.dp = None
+        if dp is not None:
+            assert dp >= 0 and dp <= 0xffff
+            self.dp = int(dp)
+
     def clone(self):
         cls = self.__class__
-        return cls(e=self.e, m=self.m, x=self.x, c=self.c, dbr=self.dbr)
+        return cls(
+            e=self.e, m=self.m, x=self.x, c=self.c, dbr=self.dbr, dp=self.dp)
 
     def encode(self):
         p = ""
@@ -42,8 +48,12 @@ class State:
         if self.dbr is not None:
             b = "b={:x}".format(self.dbr)
 
-        if any((p, b)):
-            return " ".join((p, b))
+        d = ""
+        if self.dp is not None:
+            d = "d={:x}".format(self.dp)
+
+        if any((p, b, d)):
+            return " ".join((p, b, d))
         else:
             return None
 
@@ -76,6 +86,10 @@ class State:
             elif kind == "b=":
                 dbr = int(data, base=16)
                 kwargs["dbr"] = dbr
+
+            elif kind == "d=":
+                dp = int(data, base=16)
+                kwargs["dp"] = dp
 
         if kwargs:
             return cls(**kwargs)

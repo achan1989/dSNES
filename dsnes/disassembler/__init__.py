@@ -695,6 +695,7 @@ class CallAbs(Absolute):
         state.x = None
         state.c = None
         state.dbr = None
+        state.dp = None
         return state
 
 class CallAbsLong(AbsLong):
@@ -722,6 +723,7 @@ class CallAbsLong(AbsLong):
         state.x = None
         state.c = None
         state.dbr = None
+        state.dp = None
         return state
 
 class CallAbsXInd(AbsXInd):
@@ -748,6 +750,7 @@ class CallAbsXInd(AbsXInd):
         state.x = None
         state.c = None
         state.dbr = None
+        state.dp = None
         return state
 
 class ReturnInt(Stack):
@@ -1200,13 +1203,33 @@ class CLC(Implied):
         return state
 
 class PLB(Stack):
-    """Special handling of the PLB opcode."""
+    """Special handling of PLB (pull data bank from stack)."""
     def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
         """
         state.dbr = None
+        return state
+
+class PLD(Stack):
+    """Special handling of PLD (pull DP from stack)."""
+    def new_state(self, addr, state, opcode, op0, op1, op2):
+        """Get the CPU state after executing the instruction.
+
+        Return a modified State.
+        """
+        state.dp = None
+        return state
+
+class TCD(Implied):
+    """Special handling of TCD (transfer accumulator to DP reg)."""
+    def new_state(self, addr, state, opcode, op0, op1, op2):
+        """Get the CPU state after executing the instruction.
+
+        Return a modified State.
+        """
+        state.dp = None
         return state
 
 
@@ -1254,7 +1277,7 @@ codes = {
 0x28: PLP("plp"), # ("plp                   "),
 0x29: ImmediateAmbiguous("and", "a8"), # (     ("and #$%.2x              ", op8) if a8 else ("and #$%.4x            ", op16)),
 0x2a: Accumulator("rol a"), # ("rol a                 "),
-0x2b: Stack("pld"), # ("pld                   "),
+0x2b: PLD("pld"), # ("pld                   "),
 0x2c: Absolute("bit"), # ("bit $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
 0x2d: Absolute("and"), # ("and $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
 0x2e: Absolute("rol"), #("rol $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
@@ -1302,7 +1325,7 @@ codes = {
 0x58: Implied("cli", default_comment="Enable interrupts"), # ("cli                   "),
 0x59: AbsoluteY("eor"), # ("eor $%.4x,y   [%.6x]", op16, decode(OPTYPE_ADDRY, op16)),
 0x5a: Stack("phy"), # ("phy                   "),
-0x5b: Implied("tcd", default_comment="Transfer 16b acc to DP reg"), # ("tcd                   "),
+0x5b: TCD("tcd", default_comment="Transfer 16b acc to DP reg"), # ("tcd                   "),
 0x5c: JumpAbsLong("jml"), # ("jml $%.6x   [%.6x]", op24, decode(OPTYPE_LONG, op24)),
 0x5d: AbsoluteX("eor"), # ("eor $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
 0x5e: AbsoluteX("lsr"), # ("lsr $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
