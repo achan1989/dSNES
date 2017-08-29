@@ -49,7 +49,7 @@ class InstructionType:
             target_info=self.target_info(addr, state, op0, op1, op2),
             state=state,
             next_addr=self.next_instruction_addr(addr, state, op0, op1, op2),
-            new_state=self.new_state(addr, state.clone(), op0, op1, op2),
+            new_state=self.new_state(addr, state.clone(), opcode, op0, op1, op2),
             default_comment=self.get_default_comment(addr, state, op0, op1, op2)
         )
 
@@ -81,7 +81,7 @@ class InstructionType:
         a = (a + self.nbytes) & 0xFFFF
         return (NextAction.step, pbr + a)
 
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -683,7 +683,7 @@ class CallAbs(Absolute):
 
         return (NextAction.call, target, after_return)
 
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -710,7 +710,7 @@ class CallAbsLong(AbsLong):
 
         return (NextAction.call, target, after_return)
 
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -736,7 +736,7 @@ class CallAbsXInd(AbsXInd):
 
         return (NextAction.call, target, after_return)
 
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -902,6 +902,24 @@ class BranchCond(InstructionType):
 
         return (NextAction.branch, taken, not_taken)
 
+    def new_state(self, addr, state, opcode, op0, op1, op2):
+        """Get the CPU state after executing the instruction.
+
+        Return a modified State.
+        """
+        # Branch if carry set.
+        if opcode == 0xb0:
+            # Branch not taken = carry is clear.
+            state.c = False
+            return state
+        # Branch if carry clear.
+        elif opcode == 0x90:
+            # Branch not taken = carry is set.
+            state.c = True
+            return state
+        else:
+            return super().new_state(*args)
+
 class BranchAlways(InstructionType):
     nbytes = 2
 
@@ -992,7 +1010,7 @@ class RFU(Implied):
 
 class REP(Immediate8):
     """Special handling of the REP opcode."""
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -1048,7 +1066,7 @@ class REP(Immediate8):
 
 class SEP(Immediate8):
     """Special handling of the SEP opcode."""
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -1104,7 +1122,7 @@ class SEP(Immediate8):
 
 class PLP(Stack):
     """Special handling of the PLP opcode."""
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -1131,7 +1149,7 @@ class PLP(Stack):
 
 class XCE(Implied):
     """Special handling of the XCE opcode."""
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -1163,7 +1181,7 @@ class XCE(Implied):
 
 class SEC(Implied):
     """Special handling of the SEC opcode."""
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -1173,7 +1191,7 @@ class SEC(Implied):
 
 class CLC(Implied):
     """Special handling of the CLC opcode."""
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
@@ -1183,7 +1201,7 @@ class CLC(Implied):
 
 class PLB(Stack):
     """Special handling of the PLB opcode."""
-    def new_state(self, addr, state, op0, op1, op2):
+    def new_state(self, addr, state, opcode, op0, op1, op2):
         """Get the CPU state after executing the instruction.
 
         Return a modified State.
