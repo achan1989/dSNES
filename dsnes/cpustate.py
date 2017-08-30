@@ -2,37 +2,75 @@
 # Licensed under GPLv3
 
 class State:
-    def __init__(self, e=None, m=None, x=None, c=None, dbr=None, dp=None):
-        self.e = None
-        if e is not None:
-            self.e = bool(e)
+    VALID_VARS = ("e", "m", "x", "c", "b", "d")
+    VALID_FLAGS_VALUES = (None, True, False)
 
-        self.m = None
-        if m is not None:
-            self.m = bool(m)
+    def __init__(self, e=None, m=None, x=None, c=None, b=None, d=None):
+        self.e = e
+        self.m = m
+        self.x = x
+        self.c = c
+        self.b = b
+        self.d = d
 
-        self.x = None
-        if x is not None:
-            self.x = bool(x)
+    @property
+    def e(self):
+        return self._e
+    @e.setter
+    def e(self, value):
+        assert value in self.VALID_FLAGS_VALUES
+        self._e = value
 
-        self.c = None
-        if c is not None:
-            self.c = bool(c)
+    @property
+    def m(self):
+        return self._m
+    @m.setter
+    def m(self, value):
+        assert value in self.VALID_FLAGS_VALUES
+        self._m = value
 
-        self.dbr = None
-        if dbr is not None:
-            assert dbr >= 0 and dbr <= 0xff
-            self.dbr = int(dbr)
+    @property
+    def x(self):
+        return self._x
+    @x.setter
+    def x(self, value):
+        assert value in self.VALID_FLAGS_VALUES
+        self._x = value
 
-        self.dp = None
-        if dp is not None:
-            assert dp >= 0 and dp <= 0xffff
-            self.dp = int(dp)
+    @property
+    def c(self):
+        return self._c
+    @c.setter
+    def c(self, value):
+        assert value in self.VALID_FLAGS_VALUES
+        self._c = value
+
+    @property
+    def b(self):
+        return self._b
+    @b.setter
+    def b(self, value):
+        if value is None:
+            self._b = None
+        else:
+            assert value >= 0 and value <= 0xff
+            self._b = int(value)
+
+    @property
+    def d(self):
+        return self._d
+    @d.setter
+    def d(self, value):
+        if value is None:
+            self._d = None
+        else:
+            assert value >= 0 and value <= 0xff
+            self._d = int(value)
 
     def clone(self):
         cls = self.__class__
         return cls(
-            e=self.e, m=self.m, x=self.x, c=self.c, dbr=self.dbr, dp=self.dp)
+            e=self.e, m=self.m, x=self.x, c=self.c, b=self.b, d=self.d)
 
     def encode(self):
         p = ""
@@ -45,12 +83,12 @@ class State:
             p = "p={}".format(p)
 
         b = ""
-        if self.dbr is not None:
-            b = "b={:x}".format(self.dbr)
+        if self.b is not None:
+            b = "b={:x}".format(self.b)
 
         d = ""
-        if self.dp is not None:
-            d = "d={:x}".format(self.dp)
+        if self.d is not None:
+            d = "d={:x}".format(self.d)
 
         parts = [part for part in (p, b, d) if part]
         if any(parts):
@@ -85,12 +123,12 @@ class State:
                         "'{}' is not a valid CPU flags encoding".format(data))
 
             elif kind == "b=":
-                dbr = int(data, base=16)
-                kwargs["dbr"] = dbr
+                b = int(data, base=16)
+                kwargs["b"] = b
 
             elif kind == "d=":
-                dp = int(data, base=16)
-                kwargs["dp"] = dp
+                d = int(data, base=16)
+                kwargs["d"] = d
 
             else:
                 raise ValueError(
