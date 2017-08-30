@@ -71,6 +71,18 @@ def test_combined():
 
     assert delta.encode() == "Δ+X -ed"
 
+def test_bad():
+    with pytest.raises(ValueError):
+        StateDelta.parse("Δ+k")
+    with pytest.raises(ValueError):
+        StateDelta.parse("Δ+x x")
+    with pytest.raises(ValueError):
+        StateDelta.parse("Δ-p")
+    with pytest.raises(ValueError):
+        StateDelta.parse("Δb=100")
+    with pytest.raises(ValueError):
+        StateDelta.parse("b=12")
+
 
 # for var in ("m", "x", "c", "e", "dbr", "dp"):
 #     assert getattr(state, var) is None

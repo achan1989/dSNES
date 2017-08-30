@@ -53,7 +53,8 @@ class State:
         if value is None:
             self._b = None
         else:
-            assert value >= 0 and value <= 0xff
+            if not (value >= 0 and value <= 0xff):
+                raise ValueError("Value for b reg out of range")
             self._b = int(value)
 
     @property
@@ -64,7 +65,8 @@ class State:
         if value is None:
             self._d = None
         else:
-            assert value >= 0 and value <= 0xff
+            if not (value >= 0 and value <= 0xff):
+                raise ValueError("Value for d reg out of range")
             self._d = int(value)
 
     def clone(self):
@@ -155,11 +157,17 @@ class State:
 class StateDelta:
     def __init__(self, to_add, to_clear):
         for var, value in to_add:
-            assert var in State.VALID_VARS
+            if var not in State.VALID_VARS:
+                raise ValueError(
+                    "{!r} is not a valid to_add item".format((var, value)))
             if var in ("b", "d"):
-                assert value >= 0 and value <= 0xff
+                if not (value >= 0 and value <= 0xff):
+                    raise ValueError(
+                        "Value for {} reg out of range".format(var))
         for var in to_clear:
-            assert var in State.VALID_VARS
+            if var not in State.VALID_VARS:
+                raise ValueError(
+                    "{!r} is not a valid to_clear item".format(var))
         self.to_add = to_add
         self.to_clear = to_clear
 

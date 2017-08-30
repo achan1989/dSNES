@@ -58,3 +58,5 @@ def test_bad():
         State.parse("p=Mxq")
     with pytest.raises(ValueError):
         State.parse("d=potato")
+    with pytest.raises(ValueError):
+        State.parse("Δ+C")
