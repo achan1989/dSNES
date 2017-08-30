@@ -52,8 +52,9 @@ class State:
         if self.dp is not None:
             d = "d={:x}".format(self.dp)
 
-        if any((p, b, d)):
-            return " ".join((p, b, d))
+        parts = [part for part in (p, b, d) if part]
+        if any(parts):
+            return " ".join(parts)
         else:
             return None
 
@@ -90,6 +91,10 @@ class State:
             elif kind == "d=":
                 dp = int(data, base=16)
                 kwargs["dp"] = dp
+
+            else:
+                raise ValueError(
+                    "'{}' is not a valid CPU state encoding".format(s))
 
         if kwargs:
             return cls(**kwargs)
