@@ -6,7 +6,7 @@ from dsnes.analyser import Analyser, database
 from dsnes.bus import Bus
 from dsnes.cartridge import Cartridge
 from dsnes.disassembler import disassemble, NextAction
-from dsnes.cpustate import State
+from dsnes.cpustate import State, StateDelta
 from dsnes.memory import Rom, apureg, cpureg, dmareg, ppureg, superfxreg
 
 class UnmappedMemoryAccess(ValueError):
