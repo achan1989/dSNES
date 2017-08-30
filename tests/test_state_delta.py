@@ -83,6 +83,12 @@ def test_bad():
     with pytest.raises(ValueError):
         StateDelta.parse("b=12")
 
+def test_empty_parse():
+    with pytest.raises(ValueError):
+        StateDelta.parse("")
+    with pytest.raises(ValueError):
+        StateDelta.parse("Δ")
+
 
 # for var in ("m", "x", "c", "e", "dbr", "dp"):
 #     assert getattr(state, var) is None
