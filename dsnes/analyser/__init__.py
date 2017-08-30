@@ -43,8 +43,8 @@ class Analyser:
                 if address in self.visited:
                     break
 
-                # If the user claims to know the state for this instruction,
-                # use it.
+                # If the user claims to know the exact state for this
+                # instruction, use it.
                 declared_state = db.get_state(address)
                 if declared_state is not None:
                     self.state = declared_state
@@ -52,6 +52,11 @@ class Analyser:
                 # previous instruction.
                 else:
                     self.state = calculated_state
+                    # We can also modify this calculated state based on some
+                    # partial state information provided by the user.
+                    delta = db.get_state_delta(address)
+                    if delta:
+                        self.state = delta.apply(self.state)
 
                 disassembly = dsnes.disassemble(address, bus, self.state)
                 self.disassembly.append(disassembly)
