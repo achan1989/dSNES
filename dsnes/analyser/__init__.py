@@ -108,7 +108,13 @@ class Analyser:
             target_addr, str_fn = target_info
             label = None
             if target_addr:
-                label = self.get_label_for(target_addr)
+                labels = self.get_labels_for(target_addr)
+                if len(labels) == 0:
+                    pass
+                elif len(labels) == 1:
+                    label = labels[0]
+                else:
+                    label = labels[0] + "..."
             tgt_str = str_fn(label)
 
             comment = self.get_inline_comment_for(item)
