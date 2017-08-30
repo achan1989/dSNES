@@ -34,6 +34,8 @@ class Database:
         self.data = contoml.TOMLFile([])
         self.state_cache = {}
         self.state_delta_cache = {}
+        self.labels_of_address = {}
+        self.address_of_label = {}
 
     def get_state(self, addr):
         state = self.state_cache.get(addr, None)
@@ -65,8 +67,7 @@ class Database:
 
     def get_label(self, addr):
         """Get the first label for a given address."""
-        key = encode_address_key(addr)
-        labels = self.data["labels"].get(key, [])
+        labels = self.labels_of_address.get(addr, [])
         if labels:
             return labels[0]
         else:
@@ -74,9 +75,12 @@ class Database:
 
     def get_labels(self, addr):
         """Get all labels for a given address."""
-        key = encode_address_key(addr)
-        labels = self.data["labels"].get(key, [])
+        labels = self.labels_of_address.get(addr, [])
         return labels
+
+    def get_address_with_label(self, label):
+        """Get the address that the label applies to."""
+        return self.address_of_label.get(label, None)
 
     def get_pre_comment(self, addr):
         """Get the pre-instruction comment for an address."""
@@ -111,6 +115,24 @@ class Database:
                 raise ValueError(
                     "State delta for {} has already been declared".format(key))
             delta_cache[addr] = delta
+
+        self.labels_of_address = {}
+        self.address_of_label = {}
+        for key, labels in self.data["labels"].items():
+            labels = contoml.array_to_list(labels)
+            addr = parse_address_key(key)
+            for label in labels:
+                if label in self.address_of_label:
+                    raise ValueError(
+                        "Label {!r} has already been used for 0x{:06x}".format(
+                            label, self.address_of_label[label]))
+                self.address_of_label[label] = addr
+
+                if addr not in self.labels_of_address:
+                    self.labels_of_address[addr] = [label]
+                else:
+                    lst = self.labels_of_address[addr]
+                    lst.append(label)
 
     def save(self):
         path = self.path

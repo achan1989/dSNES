@@ -22,3 +22,7 @@ def items(self):
         temp[''] = self['']
         return temp.items()
 TOMLFile.items = items
+
+def array_to_list(array):
+    """Turn a contoml.elements.array.ArrayElement into a normal list."""
+    return [x for x in array]
