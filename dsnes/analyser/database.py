@@ -33,6 +33,7 @@ class Database:
         self.path = None
         self.data = contoml.TOMLFile([])
         self.state_cache = {}
+        self.state_delta_cache = {}
 
     def get_state(self, addr):
         state = self.state_cache.get(addr, None)
@@ -51,6 +52,16 @@ class Database:
         else:
             self.state_cache[addr] = state.clone()
             self.data["states"][key] = s
+
+    def get_state_delta(self, addr):
+        delta = self.state_delta_cache.get(addr, None)
+        return delta
+
+    def set_state_delta(self, addr, delta):
+        key = encode_address_key(addr)
+        s = delta.encode()
+        self.state_delta_cache[addr] = delta
+        self.data["state_deltas"][key] = s
 
     def get_label(self, addr):
         """Get the first label for a given address."""
@@ -86,7 +97,20 @@ class Database:
             addr = parse_address_key(key)
             state = dsnes.State.parse(value)
             assert state is not None
+            if addr in state_cache:
+                raise ValueError(
+                    "State for {} has already been declared".format(key))
             state_cache[addr] = state
+
+        self.state_delta_cache = delta_cache = {}
+        for key, value in self.data["state_deltas"].items():
+            addr = parse_address_key(key)
+            delta = dsnes.StateDelta.parse(value)
+            assert delta is not None
+            if addr in delta_cache:
+                raise ValueError(
+                    "State delta for {} has already been declared".format(key))
+            delta_cache[addr] = delta
 
     def save(self):
         path = self.path
