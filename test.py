@@ -6,6 +6,7 @@ import dsnes
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--address", default=0xff9c, type=partial(int, base=0))
+parser.add_argument("--label")
 parser.add_argument("--state", default=None)
 parser.add_argument("--stop-before", default=None, type=partial(int, base=0))
 parser.add_argument("--profile-load", action="store_true")
@@ -21,8 +22,12 @@ if args.profile_load:
 else:
     project = dsnes.project.load("starfox")
     analyser = dsnes.Analyser(project)
+    address = args.address
+    if args.label:
+        address = (project.database.get_address_with_label(args.label)
+                   or args.address)
     try:
-        analyser.analyse_function(args.address, args.state, args.stop_before)
+        analyser.analyse_function(address, args.state, args.stop_before)
     except:
         analyser.display()
         print("Processed {} instructions".format(len(analyser.visited)))
