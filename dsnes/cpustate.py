@@ -219,7 +219,7 @@ class StateDelta:
 
         parts = [part for part in (add, clear, b_str, d_str) if part]
         if any(parts):
-            return "Δ" + " ".join(parts)
+            return " ".join(parts)
         else:
             return None
 
@@ -238,11 +238,7 @@ class StateDelta:
         to_add = []
         to_clear = []
 
-        if not s.startswith("Δ"):
-            raise ValueError(
-                "'{}' is not a valid delta state encoding".format(s))
-        parts = s[1:].split(" ")
-
+        parts = s.split(" ")
         for part in parts:
             mod = part[:1]
             kind = part[:2]
