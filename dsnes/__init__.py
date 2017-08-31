@@ -2,6 +2,8 @@
 # Licensed under GPLv3
 
 from dsnes import project
+from dsnes import interactive
+from dsnes import ui
 from dsnes.analyser import Analyser, database
 from dsnes.bus import Bus
 from dsnes.cartridge import Cartridge
