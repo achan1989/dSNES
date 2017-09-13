@@ -36,7 +36,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'dsnes-ui = dsnes.ui:start'
+            'dsnes-ui = dsnes.ui.entry:start'
         ]
     }
 )
