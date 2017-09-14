@@ -28,10 +28,9 @@ def start():
 
     def ui(screen, start_scene_name=None, last_scene=None):
         scenes = [
-            Scene([dsnes.ui.StartPage(screen, session)],
-                  duration=SHOW_FOREVER, name=dsnes.ui.START_PAGE),
-            Scene([dsnes.ui.LoadingPage(screen, session)],
-                  duration=SHOW_FOREVER, name=dsnes.ui.PROJECT_LOADING_PAGE)
+            dsnes.ui.StartPage(screen, session),
+            dsnes.ui.LoadingPage(screen, session),
+            dsnes.ui.AnalysisPage(screen, session)
         ]
         start_scene = None
         if last_scene:

@@ -3,6 +3,7 @@
 
 import threading
 
+from asciimatics.scene import Scene
 from asciimatics.widgets import Button, Frame, Label, Layout
 from asciimatics.exceptions import NextScene
 
@@ -10,7 +11,13 @@ import dsnes
 from .widgets import EventFrame
 
 
-class LoadingPage(EventFrame):
+def LoadingPage(screen, session):
+    return Scene(
+        [LoadingPageFrame(screen, session)],
+        duration=dsnes.ui.SHOW_FOREVER, name=dsnes.ui.PROJECT_LOADING_PAGE)
+
+
+class LoadingPageFrame(EventFrame):
 
     def __init__(self, screen, session):
         super().__init__(
@@ -31,7 +38,7 @@ class LoadingPage(EventFrame):
             try:
                 self.session.load_project()
                 def in_gui():
-                    raise NextScene(dsnes.ui.START_PAGE)
+                    raise NextScene(dsnes.ui.ANALYSIS_PAGE)
             except Exception as ex:
                 ex_closure = ex
                 def in_gui():

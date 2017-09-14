@@ -1,10 +1,19 @@
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
+from asciimatics.scene import Scene
 from asciimatics.widgets import Button, Frame, Label, Layout
 
+import dsnes
 
-class StartPage(Frame):
+
+def StartPage(screen, session):
+    return Scene(
+        [StartPageFrame(screen, session)],
+        duration=dsnes.ui.SHOW_FOREVER, name=dsnes.ui.START_PAGE)
+
+
+class StartPageFrame(Frame):
 
     def __init__(self, screen, session):
         super().__init__(
@@ -17,6 +26,6 @@ class StartPage(Frame):
 
         layout = Layout([1, 1])
         self.add_layout(layout)
-        layout.add_widget(Button("New Project", None, "a label?"))
-        layout.add_widget(Button("Load Project", None))
+        layout.add_widget(Button("TODO: New Project", None, "a label?"))
+        layout.add_widget(Button("TODO: Load Project", None))
         self.fix()
