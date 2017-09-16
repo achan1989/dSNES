@@ -6,6 +6,13 @@ import collections
 import dsnes
 
 
+class AnalyserError:
+    def __init__(self, address, state, msg):
+        self.addr = address
+        self.state = state
+        self.msg = msg
+
+
 class Analyser:
     def __init__(self, project):
         self.project = project
@@ -58,38 +65,47 @@ class Analyser:
                     if delta:
                         self.state = delta.apply(self.state)
 
-                disassembly = dsnes.disassemble(address, bus, self.state)
-                self.operations.append(disassembly)
-                calculated_state = disassembly.new_state
+                try:
+                    self.visited.add(address)
+                    disassembly = dsnes.disassemble(address, bus, self.state)
+                except dsnes.AmbiguousDisassembly as ex:
+                    error = AnalyserError(
+                        address, self.state,
+                        "Ambiguous {mnemonic} depends on {thing}".format(
+                            mnemonic=ex.mnemonic, thing=ex.requires))
+                    self.operations.append(error)
+                    break
+                else:
+                    self.operations.append(disassembly)
+                    calculated_state = disassembly.new_state
 
-                do_next = disassembly.next_addr
-                action, data = do_next[0], do_next[1:]
+                    do_next = disassembly.next_addr
+                    action, data = do_next[0], do_next[1:]
 
-                if action in (dsnes.NextAction.step, dsnes.NextAction.jump):
-                    # Temporarily treat jump like a step.
-                    next_addr = data[0]
-                elif action is dsnes.NextAction.call:
-                    target, after_return = data
-                    self.calls.append((target, address))
-                    next_addr = after_return
-                elif action is dsnes.NextAction.branch:
-                    taken_addr, not_taken_addr = data
-                    next_addr = not_taken_addr
-                    if taken_addr == stop_before:
+                    if action in (dsnes.NextAction.step, dsnes.NextAction.jump):
+                        # Temporarily treat jump like a step.
+                        next_addr = data[0]
+                    elif action is dsnes.NextAction.call:
+                        target, after_return = data
+                        self.calls.append((target, address))
+                        next_addr = after_return
+                    elif action is dsnes.NextAction.branch:
+                        taken_addr, not_taken_addr = data
+                        next_addr = not_taken_addr
+                        if taken_addr == stop_before:
+                            print_address(address)
+                            import pdb
+                            pdb.set_trace()
+                        queue.append(taken_addr)
+                    else:
+                        raise NotImplementedError(
+                            "Analyser can't handle {}".format(action))
+
+                    if next_addr == stop_before:
                         print_address(address)
                         import pdb
                         pdb.set_trace()
-                    queue.append(taken_addr)
-                else:
-                    raise NotImplementedError(
-                        "Analyser can't handle {}".format(action))
-
-                self.visited.add(address)
-                if next_addr == stop_before:
-                    print_address(address)
-                    import pdb
-                    pdb.set_trace()
-                address = next_addr
+                    address = next_addr
 
     def display(self):
         for operation in self.operations:
@@ -102,33 +118,49 @@ class Analyser:
                 for line in lines:
                     print(" ; {}".format(line))
 
-            # Try to replace an address with a label.
-            target_info = operation.target_info
-            target_addr, str_fn = target_info
-            label = None
-            if target_addr:
-                labels = self.get_labels_for(target_addr)
-                if len(labels) == 0:
-                    pass
-                elif len(labels) == 1:
-                    label = labels[0]
-                else:
-                    label = labels[0] + "..."
-            tgt_str = str_fn(label)
+            if isinstance(operation, AnalyserError):
+                self._display_error(operation)
+            else:
+                self._display_operation(operation)
 
-            comment = self.get_inline_comment_for(operation)
-            if comment:
-                comment = "; {}".format(comment)
+    def _display_operation(self, operation):
+        # Try to replace an address with a label.
+        target_info = operation.target_info
+        target_addr, str_fn = target_info
+        label = None
+        if target_addr:
+            labels = self.get_labels_for(target_addr)
+            if len(labels) == 0:
+                pass
+            elif len(labels) == 1:
+                label = labels[0]
+            else:
+                label = labels[0] + "..."
+        tgt_str = str_fn(label)
 
-            s = " {pbr:02x}:{pc:04x}:{raw:<11}  {asm:<15s}   {target:<18s}  {comment:<35s}   {state}".format(
-                pbr=(operation.addr & 0xFF0000) >> 16,
-                pc=operation.addr & 0xFFFF,
-                raw=" ".join([format(n, "02x") for n in operation.raw]),
-                asm=operation.asm_str,
-                target=tgt_str,
-                comment=comment,
-                state=operation.state.encode())
-            print(s)
+        comment = self.get_inline_comment_for(operation)
+        if comment:
+            comment = "; {}".format(comment)
+
+        s = " {pbr:02x}:{pc:04x}:{raw:<11}  {asm:<15s}   {target:<18s}  {comment:<35s}   {state}".format(
+            pbr=(operation.addr & 0xFF0000) >> 16,
+            pc=operation.addr & 0xFFFF,
+            raw=" ".join([format(n, "02x") for n in operation.raw]),
+            asm=operation.asm_str,
+            target=tgt_str,
+            comment=comment,
+            state=operation.state.encode())
+        print(s)
+
+    def _display_error(self, error):
+        error_msg = "!!!{}!!!".format(error.msg)
+        s = " {pbr:02x}:{pc:04x}{pad:<12}  {msg:^73}   {state}".format(
+            pbr=(error.addr & 0xFF0000) >> 16,
+            pc=error.addr & 0xFFFF,
+            pad="",
+            msg=error_msg,
+            state=error.state.encode())
+        print(s)
 
     def get_label_for(self, addr):
         try:

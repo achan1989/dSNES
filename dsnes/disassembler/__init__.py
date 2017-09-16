@@ -124,7 +124,7 @@ class ImmediateAmbiguous(InstructionType):
 
         if self.selector == "a8":
             if a8 is None:
-                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or m flags")
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e/m flags")
             if a8:
                 return b[:2]
             else:
@@ -132,7 +132,7 @@ class ImmediateAmbiguous(InstructionType):
 
         else:
             if x8 is None:
-                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or x flags")
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e/x flags")
             if x8:
                 return b[:2]
             else:
@@ -146,7 +146,7 @@ class ImmediateAmbiguous(InstructionType):
 
         if self.selector == "a8":
             if a8 is None:
-                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or m flags")
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e/m flags")
             if a8:
                 return "{} #${:02x}".format(self.mnemonic, op8)
             else:
@@ -154,7 +154,7 @@ class ImmediateAmbiguous(InstructionType):
 
         else:
             if x8 is None:
-                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or x flags")
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e/x flags")
             if x8:
                 return "{} #${:02x}".format(self.mnemonic, op8)
             else:
@@ -173,7 +173,7 @@ class ImmediateAmbiguous(InstructionType):
 
         if self.selector == "a8":
             if a8 is None:
-                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or m flags")
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e/m flags")
             if a8:
                 nbytes = 2
             else:
@@ -181,7 +181,7 @@ class ImmediateAmbiguous(InstructionType):
 
         else:
             if x8 is None:
-                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e or x flags")
+                raise dsnes.AmbiguousDisassembly(self.mnemonic, "e/x flags")
             if x8:
                 nbytes = 2
             else:
