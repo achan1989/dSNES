@@ -8,7 +8,7 @@ from asciimatics.widgets import Button, Frame, Label, Layout
 from asciimatics.exceptions import NextScene
 
 import dsnes
-from .widgets import EventFrame
+from .widgets import BetterFrame
 
 
 def LoadingPage(screen, session):
@@ -17,7 +17,7 @@ def LoadingPage(screen, session):
         duration=dsnes.ui.SHOW_FOREVER, name=dsnes.ui.PROJECT_LOADING_PAGE)
 
 
-class LoadingPageFrame(EventFrame):
+class LoadingPageFrame(BetterFrame):
 
     def __init__(self, screen, session):
         super().__init__(
