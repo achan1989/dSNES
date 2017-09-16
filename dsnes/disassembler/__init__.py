@@ -97,7 +97,11 @@ class InstructionType:
 
         Return the default_comment keyword argument if it was given, else None.
         """
-        return self.default_comment
+        dc = self.default_comment
+        if dc:
+            return "; {}".format(dc)
+        else:
+            return None
 
 # Basic addressing modes.
 
@@ -285,7 +289,7 @@ class AbsoluteX(InstructionType):
         return ti
 
     def get_default_comment(self, *args):
-        comment = "Can cross banks."
+        comment = "; Can cross banks."
         dc = self.default_comment
         if dc:
             comment += " {}".format(dc)
@@ -317,7 +321,7 @@ class AbsoluteY(InstructionType):
         return ti
 
     def get_default_comment(self, *args):
-        comment = "Can cross banks."
+        comment = "; Can cross banks."
         dc = self.default_comment
         if dc:
             comment += " {}".format(dc)
@@ -407,9 +411,9 @@ class DirectPageX(InstructionType):
 
     def get_default_comment(self, addr, state, op0, op1, op2):
         if state.e is False and state.x is False:
-            comment = "Target is masked 0xFFFF."
+            comment = "; Target is masked 0xFFFF."
         else:
-            comment = "Wrapping rules p102."
+            comment = "; Wrapping rules p102."
         if self.default_comment:
             comment += " {}".format(self.default_comment)
         return comment
@@ -445,9 +449,9 @@ class DirectPageY(InstructionType):
 
     def get_default_comment(self, addr, state, op0, op1, op2):
         if state.e is False and state.x is False:
-            comment = "Target is masked 0xFFFF."
+            comment = "; Target is masked 0xFFFF."
         else:
-            comment = "Wrapping rules p102."
+            comment = "; Wrapping rules p102."
         if self.default_comment:
             comment += " {}".format(self.default_comment)
         return comment
@@ -612,7 +616,7 @@ class DPXInd(InstructionType):
         return ti
 
     def get_default_comment(self, addr, state, op0, op1, op2):
-        comment = "Wrapping rules p163."
+        comment = "; Wrapping rules p163."
         if self.default_comment:
             comment += " {}".format(self.default_comment)
         return comment
@@ -1131,7 +1135,7 @@ class REP(Immediate8):
         }
         was_clr = [letter for letter, mask in flags.items() if bool(op8 & mask)]
         if was_clr:
-            return "Clear {}".format("/".join(was_clr))
+            return "; Clear {}".format("/".join(was_clr))
         else:
             return None
 
@@ -1187,7 +1191,7 @@ class SEP(Immediate8):
         }
         was_set = [letter for letter, mask in flags.items() if bool(op8 & mask)]
         if was_set:
-            return "Set {}".format("/".join(was_set))
+            return "; Set {}".format("/".join(was_set))
         else:
             return None
 
@@ -1460,7 +1464,7 @@ codes = {
 0x9b: Implied("txy"), # ("txy                   "),
 0x9c: Absolute("stz"), # ("stz $%.4x     [%.6x]", op16, decode(OPTYPE_ADDR, op16)),
 0x9d: AbsoluteX("sta"), # ("sta $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
-0x9e: AbsoluteX("stz", default_comment="Store zero"), # ("stz $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
+0x9e: AbsoluteX("stz"), # ("stz $%.4x,x   [%.6x]", op16, decode(OPTYPE_ADDRX, op16)),
 0x9f: AbsLongX("sta"), # ("sta $%.6x,x [%.6x]", op24, decode(OPTYPE_LONGX, op24)),
 0xa0: ImmediateAmbiguous("ldy", "x8"), # (     ("ldy #$%.2x              ", op8) if x8 else ("ldy #$%.4x            ", op16)),
 0xa1: DPXInd("lda"), # ("lda ($%.2x,x)   [%.6x]", op8, decode(OPTYPE_IDPX, op8)),
