@@ -33,8 +33,8 @@ class Analyser:
         self.state = None
         self.operations = None
         self.disassembly = None
-        # List of (target, from) tuples.
-        self.calls = None
+        # Dict of from_address:[(to, state)].
+        self.calls_from = None
         self.visited = None
         self.reset()
 
@@ -42,23 +42,25 @@ class Analyser:
         self.state = dsnes.State()
         self.operations = []
         self.disassembly = []
-        self.calls = []
+        self.calls_from = collections.defaultdict(list)
         self.visited = set()
 
-    def analyse_function(self, address, state_str=None, stop_before=None):
+    def analyse_function(self, address, state=None, stop_before=None):
         self.reset()
-        self._analyse_operations(address, state_str, stop_before)
+        self._analyse_operations(address, state, stop_before)
         self._collate_disassembly()
 
-    def _analyse_operations(self, address, state_str, stop_before):
+    def _analyse_operations(self, address, state, stop_before):
         bus = self.project.bus
         db = self.project.database
         queue = collections.deque()
         queue.append(address)
         # By default we don't know what state the CPU is in, though the caller
         # can provide a starting state.
-        if state_str is not None:
-            calculated_state = dsnes.State.parse(str(state_str))
+        if isinstance(state, dsnes.State):
+            calculated_state = state
+        elif state is not None:
+            calculated_state = dsnes.State.parse(state)
         else:
             calculated_state = dsnes.State()
 
@@ -106,7 +108,8 @@ class Analyser:
                         next_addr = data[0]
                     elif action is dsnes.NextAction.call:
                         target, after_return = data
-                        self.calls.append((target, address))
+                        call_list = self.calls_from[address]
+                        call_list.append((target, self.state))
                         next_addr = after_return
                     elif action is dsnes.NextAction.branch:
                         taken_addr, not_taken_addr = data
@@ -140,6 +143,24 @@ class Analyser:
                 disassembly.append(item)
 
             disassembly.append(operation)
+
+    def get_disassembly_line(self, line_number):
+        return self.disassembly[line_number]
+
+    def get_disassembly_lines(self):
+        return self.disassembly
+
+    def get_calls_from(self, line_number):
+        """Get calls made from the given disassembly line number.
+
+        Returns a list of (call_target, state_before_call).
+        """
+        item = self.disassembly[line_number]
+        if not isinstance(item, dsnes.disassembler.Disassembly):
+            return []
+        address = item.addr
+        # Use get() so the defaultdict doesn't add the empty list to itself.
+        return self.calls_from.get(address, [])
 
     def display(self):
         """Print the disassembly."""
