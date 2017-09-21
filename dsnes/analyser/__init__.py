@@ -13,11 +13,26 @@ class AnalyserError:
         self.msg = msg
 
 
+class Label:
+    def __init__(self, operation, text):
+        # The operation that this is associated with.
+        self.operation = operation
+        self.text = text
+
+
+class PreComment:
+    def __init__(self, operation, text):
+        # The operation that this is associated with.
+        self.operation = operation
+        self.text = text
+
+
 class Analyser:
     def __init__(self, project):
         self.project = project
         self.state = None
         self.operations = None
+        self.disassembly = None
         # List of (target, from) tuples.
         self.calls = None
         self.visited = None
@@ -26,16 +41,20 @@ class Analyser:
     def reset(self):
         self.state = dsnes.State()
         self.operations = []
+        self.disassembly = []
         self.calls = []
         self.visited = set()
 
     def analyse_function(self, address, state_str=None, stop_before=None):
         self.reset()
-        orig_addr = address
+        self._analyse_operations(address, state_str, stop_before)
+        self._collate_disassembly()
+
+    def _analyse_operations(self, address, state_str, stop_before):
         bus = self.project.bus
         db = self.project.database
         queue = collections.deque()
-        queue.append(orig_addr)
+        queue.append(address)
         # By default we don't know what state the CPU is in, though the caller
         # can provide a starting state.
         if state_str is not None:
@@ -107,21 +126,37 @@ class Analyser:
                         pdb.set_trace()
                     address = next_addr
 
-    def display(self):
-        for operation in self.operations:
-            # Print label(s) and comments for this instruction.
-            for label in self.get_labels_for(operation.addr):
-                print(label)
-            pre_comment = self.get_pre_comment_for(operation.addr)
-            if pre_comment:
-                lines = pre_comment.splitlines()
-                for line in lines:
-                    print(" ; {}".format(line))
+    def _collate_disassembly(self):
+        disassembly = self.disassembly
 
-            if isinstance(operation, AnalyserError):
-                self._display_error(operation)
+        for operation in self.operations:
+            for text in self.get_labels_for(operation.addr):
+                item = Label(operation, text)
+                disassembly.append(item)
+
+            text = self.get_pre_comment_for(operation.addr)
+            if text:
+                item = PreComment(operation, text)
+                disassembly.append(item)
+
+            disassembly.append(operation)
+
+    def display(self):
+        """Print the disassembly."""
+        for item in self.disassembly:
+            if isinstance(item, Label):
+                print(item.text)
+
+            elif isinstance(item, PreComment):
+                lines = item.text.splitlines()
+                for line in lines:
+                    print(" {}".format(line))
+
+            elif isinstance(item, AnalyserError):
+                self._display_error(item)
+
             else:
-                self._display_operation(operation)
+                self._display_operation(item)
 
     def _display_operation(self, operation):
         # Try to replace an address with a label.
@@ -139,8 +174,6 @@ class Analyser:
         tgt_str = str_fn(label)
 
         comment = self.get_inline_comment_for(operation)
-        if comment:
-            comment = "; {}".format(comment)
 
         s = " {pbr:02x}:{pc:04x}:{raw:<11}  {asm:<15s}   {target:<18s}  {comment:<35s}   {state}".format(
             pbr=(operation.addr & 0xFF0000) >> 16,
