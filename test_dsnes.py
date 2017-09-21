@@ -28,7 +28,6 @@ else:
                    or args.address)
     try:
         analyser.analyse_function(address, args.state, args.stop_before)
-    except:
+    finally:
         analyser.display()
         print("Processed {} instructions".format(len(analyser.visited)))
-        raise
