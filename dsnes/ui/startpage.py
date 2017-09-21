@@ -28,4 +28,9 @@ class StartPageFrame(Frame):
         self.add_layout(layout)
         layout.add_widget(Button("TODO: New Project", None, "a label?"))
         layout.add_widget(Button("TODO: Load Project", None))
+        layout.add_widget(Button("Test Popup", self.do_test_popup), 1)
         self.fix()
+
+    def do_test_popup(self):
+        self._scene.add_effect(
+            dsnes.ui.widgets.TextInputPopup(self.screen, "prompt goes here", "Address"))
