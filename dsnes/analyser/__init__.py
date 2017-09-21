@@ -10,7 +10,7 @@ class Analyser:
     def __init__(self, project):
         self.project = project
         self.state = None
-        self.disassembly = None
+        self.operations = None
         # List of (target, from) tuples.
         self.calls = None
         self.visited = None
@@ -18,7 +18,7 @@ class Analyser:
 
     def reset(self):
         self.state = dsnes.State()
-        self.disassembly = []
+        self.operations = []
         self.calls = []
         self.visited = set()
 
@@ -59,7 +59,7 @@ class Analyser:
                         self.state = delta.apply(self.state)
 
                 disassembly = dsnes.disassemble(address, bus, self.state)
-                self.disassembly.append(disassembly)
+                self.operations.append(disassembly)
                 calculated_state = disassembly.new_state
 
                 do_next = disassembly.next_addr
@@ -92,19 +92,18 @@ class Analyser:
                 address = next_addr
 
     def display(self):
-        disassembly = self.disassembly
-        for item in disassembly:
+        for operation in self.operations:
             # Print label(s) and comments for this instruction.
-            for label in self.get_labels_for(item.addr):
+            for label in self.get_labels_for(operation.addr):
                 print(label)
-            pre_comment = self.get_pre_comment_for(item.addr)
+            pre_comment = self.get_pre_comment_for(operation.addr)
             if pre_comment:
                 lines = pre_comment.splitlines()
                 for line in lines:
                     print(" ; {}".format(line))
 
             # Try to replace an address with a label.
-            target_info = item.target_info
+            target_info = operation.target_info
             target_addr, str_fn = target_info
             label = None
             if target_addr:
@@ -117,18 +116,18 @@ class Analyser:
                     label = labels[0] + "..."
             tgt_str = str_fn(label)
 
-            comment = self.get_inline_comment_for(item)
+            comment = self.get_inline_comment_for(operation)
             if comment:
                 comment = "; {}".format(comment)
 
             s = " {pbr:02x}:{pc:04x}:{raw:<11}  {asm:<15s}   {target:<18s}  {comment:<35s}   {state}".format(
-                pbr=(item.addr & 0xFF0000) >> 16,
-                pc=item.addr & 0xFFFF,
-                raw=" ".join([format(n, "02x") for n in item.raw]),
-                asm=item.asm_str,
+                pbr=(operation.addr & 0xFF0000) >> 16,
+                pc=operation.addr & 0xFFFF,
+                raw=" ".join([format(n, "02x") for n in operation.raw]),
+                asm=operation.asm_str,
                 target=tgt_str,
                 comment=comment,
-                state=item.state.encode())
+                state=operation.state.encode())
             print(s)
 
     def get_label_for(self, addr):
@@ -159,9 +158,9 @@ class Analyser:
     def get_pre_comment_for(self, addr):
         return self.project.database.get_pre_comment(addr)
 
-    def get_inline_comment_for(self, item):
-        user = self.project.database.get_inline_comment(item.addr)
-        default = item.default_comment
+    def get_inline_comment_for(self, operation):
+        user = self.project.database.get_inline_comment(operation.addr)
+        default = operation.default_comment
         return user or default or ""
 
 
