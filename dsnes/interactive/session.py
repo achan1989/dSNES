@@ -13,7 +13,6 @@ class NoOperation(Exception):
 class Session:
     def __init__(self):
         self.project = None
-        self.to_load = None
         self.analysis_stack = collections.deque()
         self.current_analysis = None
         self.line_number = None
@@ -54,13 +53,12 @@ class Session:
             raise RuntimeError("No analysis is open")
         return self.current_analysis.get_disassembly_lines()
 
-    def load_project(self, path=None):
+    def load_project(self, path):
         if self.project is not None:
             raise RuntimeError("Project already loaded")
-        if not path and not self.to_load:
-            raise RuntimeError("Must set to_load or provide a path")
-        self.project = dsnes.project.load(path or self.to_load)
-        self.to_load = None
+        if not path:
+            raise RuntimeError("Must provide a path")
+        self.project = dsnes.project.load(path)
         self.analysis_stack.clear()
 
     def new_analysis(self, address):

@@ -32,5 +32,11 @@ setup(
 
     # Use this specific version of contoml because of monkey-patch bug fix.
     install_requires=['contoml == 0.32'],
-    tests_require=['pytest']
+    tests_require=['pytest'],
+
+    entry_points={
+        'console_scripts': [
+            'dsnes-ui = dsnes.ui.main:start'
+        ]
+    }
 )
