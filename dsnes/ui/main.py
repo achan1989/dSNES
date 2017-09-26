@@ -4,16 +4,28 @@
 import queue
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 
 import dsnes
+from dsnes.ui import events
+
+
+MENU_FILE = "File"
+MENU_ITEM_OPEN_PROJECT = "Open Project..."
+MENU_ITEM_EXIT = "Exit"
+
+MENU_SEARCH = "Search"
+MENU_ITEM_GOTO = "Goto..."
 
 
 class MainWindow:
     def __init__(self):
         self.session = dsnes.interactive.Session()
+
         self.root = root = tk.Tk()
-        self.mainframe = mainframe = ttk.Frame(root)
+        root.title("dSNES")
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(0, weight=1)
 
         root.option_add('*tearOff', tk.FALSE)
         self.menu_bar = menu_bar = tk.Menu(root)
@@ -21,14 +33,37 @@ class MainWindow:
 
         self.menu_file = menu_file = tk.Menu(menu_bar)
         menu_file.add_command(
-            label="Open Project", command=self.on_open_project_menu)
+            label=MENU_ITEM_OPEN_PROJECT, accelerator="Ctrl+O",
+            command=self.on_open_project_menu)
+        root.bind("<Control-o>", lambda _e: menu_file.invoke(MENU_ITEM_OPEN_PROJECT))
         menu_file.add_separator()
-        menu_file.add_command(label="Exit", command=self.root.destroy)
-        menu_bar.add_cascade(label="File", menu=menu_file)
+        menu_file.add_command(label=MENU_ITEM_EXIT, command=self.root.destroy)
+        menu_bar.add_cascade(label=MENU_FILE, menu=menu_file)
+
+        self.mainframe = mainframe = ttk.Frame(root)
+        mainframe.grid(column=0, row=0, sticky="nesw")
+        mainframe.columnconfigure(0, weight=1)
+        mainframe.rowconfigure(0, weight=1)
+
+        root.bind(events.PROJECT_CLOSED, self.handle_project_closed)
+        root.bind(events.PROJECT_LOADING, self.handle_project_loading)
+        root.bind(events.PROJECT_LOADED, self.handle_project_loaded)
+        root.event_generate(events.PROJECT_CLOSED)
 
     def run(self):
         return self.root.mainloop()
 
+    def handle_project_closed(self, *args):
+        print(events.PROJECT_CLOSED)
+        self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
+
+    def handle_project_loading(self, *args):
+        print(events.PROJECT_LOADING)
+        self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="disabled")
+
+    def handle_project_loaded(self, *args):
+        print(events.PROJECT_LOADED)
+        self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
     def start_background_task(self, task_fn, name=None):
         """Perform a task in a background thread.
 
@@ -76,18 +111,25 @@ class MainWindow:
         else:
             result_fn()
 
-    def on_open_project_menu(self):
+    def on_open_project_menu(self, *args):
         dir_path = tk.filedialog.askdirectory(
             parent=self.root,
             title="Choose a Project Directory",
             mustexist=True)
         if dir_path != "":
-            self.menu_file.entryconfig("Open Project", state="disabled")
+            self.root.event_generate(events.PROJECT_LOADING)
             def task():
-                self.session.load_project(dir_path)
-                def in_gui():
-                    self.menu_file.entryconfig("Open Project", state="normal")
-                    # TODO: load widget?
+                try:
+                    self.session.load_project(dir_path)
+                    def in_gui():
+                        self.root.event_generate(events.PROJECT_LOADED)
+                except Exception as ex:
+                    ex_closure = ex
+                    def in_gui():
+                        self.root.event_generate(events.PROJECT_CLOSED)
+                        messagebox.showerror(
+                            message="Couldn't load project.\n\n{}".format(
+                                ex_closure))
                 return in_gui
             self.start_background_task(task, name="project_loader")
 
