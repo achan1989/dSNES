@@ -40,10 +40,22 @@ class MainWindow:
         menu_file.add_command(label=MENU_ITEM_EXIT, command=self.root.destroy)
         menu_bar.add_cascade(label=MENU_FILE, menu=menu_file)
 
+        self.menu_search = menu_search = tk.Menu(menu_bar)
+        menu_search.add_command(
+            label=MENU_ITEM_GOTO, accelerator="Ctrl+G",
+            command=self.on_goto)
+        root.bind("<Control-g>", lambda _e: menu_search.invoke(MENU_ITEM_GOTO))
+        menu_bar.add_cascade(label=MENU_SEARCH, menu=menu_search)
+
         self.mainframe = mainframe = ttk.Frame(root)
         mainframe.grid(column=0, row=0, sticky="nesw")
         mainframe.columnconfigure(0, weight=1)
         mainframe.rowconfigure(0, weight=1)
+
+        self.progress_bar = progress_bar = ttk.Progressbar(
+            mainframe, orient="horizontal", mode="indeterminate")
+        progress_bar.columnconfigure(0, weight=1)
+        progress_bar.rowconfigure(0, weight=1)
 
         root.bind(events.PROJECT_CLOSED, self.handle_project_closed)
         root.bind(events.PROJECT_LOADING, self.handle_project_loading)
@@ -55,15 +67,31 @@ class MainWindow:
 
     def handle_project_closed(self, *args):
         print(events.PROJECT_CLOSED)
+        self.menu_bar.entryconfig(MENU_SEARCH, state="disabled")
+        self.menu_search.entryconfig(MENU_ITEM_GOTO, state="disabled")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
+        self.hide_progress_bar()
 
     def handle_project_loading(self, *args):
         print(events.PROJECT_LOADING)
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="disabled")
+        self.show_progress_bar()
 
     def handle_project_loaded(self, *args):
         print(events.PROJECT_LOADED)
+        self.menu_bar.entryconfig(MENU_SEARCH, state="normal")
+        self.menu_search.entryconfig(MENU_ITEM_GOTO, state="normal")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
+        self.hide_progress_bar()
+
+    def show_progress_bar(self):
+        self.progress_bar.grid(column=0, row=0, sticky="ew")
+        self.progress_bar.start()
+
+    def hide_progress_bar(self):
+        self.progress_bar.grid_remove()
+        self.progress_bar.stop()
+
     def start_background_task(self, task_fn, name=None):
         """Perform a task in a background thread.
 
@@ -132,6 +160,9 @@ class MainWindow:
                                 ex_closure))
                 return in_gui
             self.start_background_task(task, name="project_loader")
+
+    def on_goto(self, *args):
+        TODO
 
 
 def start():
