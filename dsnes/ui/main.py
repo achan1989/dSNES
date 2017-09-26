@@ -26,6 +26,7 @@ class MainWindow:
         root.title("dSNES")
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
+        root.minsize(300, 150)
 
         root.option_add('*tearOff', tk.FALSE)
         self.menu_bar = menu_bar = tk.Menu(root)
