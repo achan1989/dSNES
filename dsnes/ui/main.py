@@ -53,6 +53,10 @@ class MainWindow:
         mainframe.columnconfigure(0, weight=1)
         mainframe.rowconfigure(0, weight=1)
 
+        self.dasm_view = dasm_view = dsnes.ui.DisassemblyView(mainframe)
+        dasm_view.columnconfigure(0, weight=1)
+        dasm_view.rowconfigure(0, weight=1)
+
         self.progress_bar = progress_bar = ttk.Progressbar(
             mainframe, orient="horizontal", mode="indeterminate")
         progress_bar.columnconfigure(0, weight=1)
@@ -71,11 +75,13 @@ class MainWindow:
         self.menu_bar.entryconfig(MENU_SEARCH, state="disabled")
         self.menu_search.entryconfig(MENU_ITEM_GOTO, state="disabled")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
+        self.hide_dasm_view()
         self.hide_progress_bar()
 
     def handle_project_loading(self, *args):
         print(events.PROJECT_LOADING)
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="disabled")
+        self.hide_dasm_view()
         self.show_progress_bar()
 
     def handle_project_loaded(self, *args):
@@ -84,6 +90,13 @@ class MainWindow:
         self.menu_search.entryconfig(MENU_ITEM_GOTO, state="normal")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
         self.hide_progress_bar()
+        self.show_dasm_view()
+
+    def show_dasm_view(self):
+        self.dasm_view.grid(column=0, row=0, sticky="nesw")
+
+    def hide_dasm_view(self):
+        self.dasm_view.grid_remove()
 
     def show_progress_bar(self):
         self.progress_bar.grid(column=0, row=0, sticky="ew")
