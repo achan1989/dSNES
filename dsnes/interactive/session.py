@@ -62,10 +62,9 @@ class Session:
         self.analysis_stack.clear()
 
     def new_analysis(self, address):
-        self.analysis_stack.clear()
-        self.line_number = None
         analyser = dsnes.Analyser(self.project)
         analyser.analyse_function(address)
+        self.analysis_stack.clear()
         self.current_analysis = analyser
         self.line_number = 0
 

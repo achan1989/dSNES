@@ -4,7 +4,7 @@
 import queue
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 
 import dsnes
 from dsnes.ui import events
@@ -36,7 +36,8 @@ class MainWindow:
         menu_file.add_command(
             label=MENU_ITEM_OPEN_PROJECT, accelerator="Ctrl+O",
             command=self.on_open_project_menu)
-        root.bind("<Control-o>", lambda _e: menu_file.invoke(MENU_ITEM_OPEN_PROJECT))
+        root.bind(
+            "<Control-o>", lambda _e: menu_file.invoke(MENU_ITEM_OPEN_PROJECT))
         menu_file.add_separator()
         menu_file.add_command(label=MENU_ITEM_EXIT, command=self.root.destroy)
         menu_bar.add_cascade(label=MENU_FILE, menu=menu_file)
@@ -53,7 +54,8 @@ class MainWindow:
         mainframe.columnconfigure(0, weight=1)
         mainframe.rowconfigure(0, weight=1)
 
-        self.dasm_view = dasm_view = dsnes.ui.DisassemblyView(mainframe)
+        self.dasm_view = dasm_view = dsnes.ui.DisassemblyView(
+            app=self, master=mainframe)
         dasm_view.columnconfigure(0, weight=1)
         dasm_view.rowconfigure(0, weight=1)
 
@@ -62,9 +64,9 @@ class MainWindow:
         progress_bar.columnconfigure(0, weight=1)
         progress_bar.rowconfigure(0, weight=1)
 
-        root.bind(events.PROJECT_CLOSED, self.handle_project_closed)
-        root.bind(events.PROJECT_LOADING, self.handle_project_loading)
-        root.bind(events.PROJECT_LOADED, self.handle_project_loaded)
+        root.bind(events.PROJECT_CLOSED, self.handle_project_closed, add=True)
+        root.bind(events.PROJECT_LOADING, self.handle_project_loading, add=True)
+        root.bind(events.PROJECT_LOADED, self.handle_project_loaded, add=True)
         root.event_generate(events.PROJECT_CLOSED)
 
     def run(self):
@@ -176,7 +178,12 @@ class MainWindow:
             self.start_background_task(task, name="project_loader")
 
     def on_goto(self, *args):
-        TODO
+        address = tk.simpledialog.askinteger(
+            title="dSNES", prompt="New analysis at address:",
+            initialvalue="0x",
+            minvalue=0, maxvalue=0xffffff)
+        self.session.new_analysis(address)
+        self.root.event_generate(events.ANALYSIS_UPDATED)
 
 
 def start():

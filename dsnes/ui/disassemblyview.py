@@ -5,10 +5,13 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 
+from dsnes.ui import events
+
 
 class DisassemblyView(ttk.Frame):
-    def __init__(self, master=None):
+    def __init__(self, app, master=None):
         super().__init__(master)
+        self.app = app
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -55,8 +58,18 @@ class DisassemblyView(ttk.Frame):
                 dasm.column(idx, width=width, minwidth=width)
 
         dasm.bind("<Button-1>", self.handle_dasm_click)
+        app.root.bind(
+            events.ANALYSIS_UPDATED, self.handle_analysis_updated, add=True)
 
     def handle_dasm_click(self, evt):
         # Prevent resizing columns.
         if self.dasm.identify_region(evt.x, evt.y) == "separator":
             return "break"
+
+    def handle_analysis_updated(self, *args):
+        print(events.ANALYSIS_UPDATED)
+        self.dasm.delete(self.dasm.get_children())
+        dasm_lines = self.app.session.current_analysis.get_disassembly_lines()
+
+        for item in dasm_lines:
+            print(item)
