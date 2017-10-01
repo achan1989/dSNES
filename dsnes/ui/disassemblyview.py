@@ -24,6 +24,8 @@ class DisassemblyView(ttk.Frame):
 
         # Map displayed item/index to actual item/index (for multi-line items).
         self.item_lookup = {}
+        # Map actual index to displayed id/index/item.
+        self.display_lookup = {}
 
         style = ttk.Style()
         self.font = tkfont.Font(name="DasmFont", font="TkFixedFont", size=12)
@@ -54,11 +56,14 @@ class DisassemblyView(ttk.Frame):
         if old_items:
             dasm.delete(*old_items)
         self.item_lookup.clear()
+        self.display_lookup.clear()
         dasm_lines = self.app.session.current_analysis.get_disassembly_lines()
-        curr_idx = self.app.session.line_number
+        curr_selected_idx = self.app.session.line_number
 
         for idx, item in enumerate(dasm_lines):
-            self.add_item(item, idx, idx==curr_idx)
+            self.add_item(item, idx, idx==curr_selected_idx)
+        identity, _, _ = self.display_lookup[curr_selected_idx]
+        dasm.selection_set(identity)
 
         # Resize the column to fit the widest item.
         # This lets the Treeview work properly with the horizontal scrollbar.
@@ -89,14 +94,20 @@ class DisassemblyView(ttk.Frame):
         identity = self.dasm.insert(parent="", index="end", text=text)
         display_index = self.dasm.index(identity)
         self.item_lookup[display_index] = (orig_index, item)
+        self.display_lookup[orig_index] = (identity, display_index, item)
 
     def add_pre_comment(self, item, orig_index):
         lines = item.text.split("\n")
+        first = True
         for line in lines:
             text = " " + line
             identity = self.dasm.insert(parent="", index="end", text=text)
             display_index = self.dasm.index(identity)
             self.item_lookup[display_index] = (orig_index, item)
+            # This points to the first line of the multi-line entry.
+            if first:
+                self.display_lookup[orig_index] = (identity, display_index, item)
+                first = False
 
     def add_error(self, item, orig_index):
         error_msg = "!!!{}!!!".format(item.msg)
@@ -108,18 +119,22 @@ class DisassemblyView(ttk.Frame):
         identity = self.dasm.insert(parent="", index="end", text=text)
         display_index = self.dasm.index(identity)
         self.item_lookup[display_index] = (orig_index, item)
+        self.display_lookup[orig_index] = (identity, display_index, item)
 
     def add_disassembly(self, item, orig_index):
-        text = " {addr}:{raw:<11}  {asm:<15s}   {target:<18s}  {comment:<35s}   {state}".format(
-            addr=format_address(item.operation.addr),
-            raw=" ".join([format(n, "02x") for n in item.operation.raw]),
-            asm=item.operation.asm_str,
-            target=item.target_str,
-            comment=item.comment,
-            state=item.operation.state.encode())
+        text = (" {addr}:{raw:<11}  {asm:<15s}   {target:<18s}  "
+                "{comment:<35s}   {state}".format(
+                    addr=format_address(item.operation.addr),
+                    raw=" ".join([format(n, "02x")
+                                  for n in item.operation.raw]),
+                    asm=item.operation.asm_str,
+                    target=item.target_str,
+                    comment=item.comment,
+                    state=item.operation.state.encode()))
         identity = self.dasm.insert(parent="", index="end", text=text)
         display_index = self.dasm.index(identity)
         self.item_lookup[display_index] = (orig_index, item)
+        self.display_lookup[orig_index] = (identity, display_index, item)
 
 def format_address(addr):
     if addr < 0 or addr > 0xFFFFFF:
