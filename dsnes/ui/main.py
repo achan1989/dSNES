@@ -189,8 +189,9 @@ class MainWindow:
             title="dSNES", prompt="New analysis at address:",
             initialvalue="0x",
             minvalue=0, maxvalue=0xffffff)
-        self.session.new_analysis(address)
-        self.root.event_generate(events.ANALYSIS_UPDATED)
+        if address is not None:
+            self.session.new_analysis(address)
+            self.root.event_generate(events.ANALYSIS_UPDATED)
 
 
 def start():
