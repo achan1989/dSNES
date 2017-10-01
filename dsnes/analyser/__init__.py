@@ -8,6 +8,7 @@ import dsnes
 
 class AnalyserError:
     def __init__(self, address, state, msg):
+        self.kind = "error"
         self.addr = address
         self.state = state
         self.msg = msg
@@ -15,6 +16,7 @@ class AnalyserError:
 
 class Label:
     def __init__(self, operation, text):
+        self.kind = "label"
         # The operation that this is associated with.
         self.operation = operation
         self.text = text
@@ -22,9 +24,18 @@ class Label:
 
 class PreComment:
     def __init__(self, operation, text):
+        self.kind = "pre-comment"
         # The operation that this is associated with.
         self.operation = operation
         self.text = text
+
+
+class Disassembly:
+    def __init__(self, operation, target_str, comment):
+        self.kind = "disassembly"
+        self.operation = operation
+        self.target_str = target_str
+        self.comment = comment
 
 
 class Analyser:
@@ -142,7 +153,27 @@ class Analyser:
                 item = PreComment(operation, text)
                 disassembly.append(item)
 
-            disassembly.append(operation)
+            if isinstance(operation, AnalyserError):
+                disassembly.append(operation)
+            else:
+                # Special manipulations for a line of disassembly.
+                # Try to replace an operation's target address with a label.
+                target_info = operation.target_info
+                target_addr, str_fn = target_info
+                label = None
+                if target_addr:
+                    labels = self.get_labels_for(target_addr)
+                    if len(labels) == 0:
+                        pass
+                    elif len(labels) == 1:
+                        label = labels[0]
+                    else:
+                        label = labels[0] + "..."
+                target_str = str_fn(label)
+
+                comment = self.get_inline_comment_for(operation)
+
+                disassembly.append(Disassembly(operation, target_str, comment))
 
     def get_disassembly_line(self, line_number):
         return self.disassembly[line_number]
