@@ -64,6 +64,8 @@ class DisassemblyView(ttk.Frame):
             self.add_item(item, idx, idx==curr_selected_idx)
         identity, _, _ = self.display_lookup[curr_selected_idx]
         dasm.selection_set(identity)
+        dasm.focus_set()
+        dasm.focus(identity)
 
         # Resize the column to fit the widest item.
         # This lets the Treeview work properly with the horizontal scrollbar.
