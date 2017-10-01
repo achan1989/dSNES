@@ -20,6 +20,7 @@ class DisassemblyView(ttk.Frame):
         dasm["show"] = "tree"  # Hides column headers.
         dasm["selectmode"] = "browse"
         dasm["padding"] = 0
+        dasm.column("#0", stretch=True)
 
         # Map displayed item/index to actual item/index (for multi-line items).
         self.item_lookup = {}
@@ -58,6 +59,17 @@ class DisassemblyView(ttk.Frame):
 
         for idx, item in enumerate(dasm_lines):
             self.add_item(item, idx, idx==curr_idx)
+
+        # Resize the column to fit the widest item.
+        # This lets the Treeview work properly with the horizontal scrollbar.
+        col_width = 0
+        for item in dasm.get_children():
+            # Need extra mmmmm due to padding weirdness.
+            text = dasm.item(item, option="text") + "mmmmm"
+            width = self.font.measure(text)
+            if col_width < width:
+                dasm.column("#0", width=width, minwidth=width)
+                col_width = width
 
     def add_item(self, item, orig_index, is_selected):
         kind = item.kind
