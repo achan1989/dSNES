@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk
 
+import dsnes
 from dsnes.ui import events
 
 
@@ -44,6 +45,10 @@ class DisassemblyView(ttk.Frame):
         dasm.bind("<<TreeviewSelect>>", self.handle_selection_change)
         app.root.bind(
             events.ANALYSIS_UPDATED, self.handle_analysis_updated, add=True)
+        app.root.bind(
+            events.FOLLOW, self.handle_follow, add=True)
+        app.root.bind(
+            events.RETURN, self.handle_return, add=True)
 
     def handle_dasm_click(self, evt):
         # Prevent resizing columns.
@@ -87,6 +92,32 @@ class DisassemblyView(ttk.Frame):
             if col_width < width:
                 dasm.column("#0", width=width, minwidth=width)
                 col_width = width
+
+    def handle_follow(self, *args):
+        print(events.FOLLOW)
+        selection = self.dasm.selection()
+        assert len(selection) == 1
+        selected_id = selection[0]
+        _, orig_index, _ = self.item_lookup[selected_id]
+
+        calls = self.app.session.get_calls_from_line(orig_index)
+        if len(calls) == 0:
+            print("No jump/call from this line")
+        elif len(calls) > 1:
+            print("More than one jump/call destination from this line")
+        else:
+            target, state = calls[0]
+            self.app.session.follow_call(target, state)
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def handle_return(self, *args):
+        print(events.RETURN)
+        try:
+            self.app.session.jump_back()
+        except dsnes.interactive.NoOperation:
+            pass
+        else:
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def add_item(self, item, orig_index, is_selected):
         kind = item.kind

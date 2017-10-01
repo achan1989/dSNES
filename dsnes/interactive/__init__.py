@@ -1,4 +1,4 @@
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
-from .session import Session
+from .session import Session, NoOperation

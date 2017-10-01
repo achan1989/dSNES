@@ -16,6 +16,8 @@ MENU_ITEM_EXIT = "Exit"
 
 MENU_SEARCH = "Search"
 MENU_ITEM_GOTO = "Goto..."
+MENU_ITEM_FOLLOW = "Follow jump/call"
+MENU_ITEM_RETURN = "Undo follow"
 
 
 class MainWindow:
@@ -51,6 +53,15 @@ class MainWindow:
 
         self.menu_search = menu_search = tk.Menu(menu_bar)
         menu_search.add_command(
+            label=MENU_ITEM_FOLLOW, accelerator="Right",
+            command=self.on_follow)
+        root.bind("<Right>", lambda _e: menu_search.invoke(MENU_ITEM_FOLLOW))
+        menu_search.add_command(
+            label=MENU_ITEM_RETURN, accelerator="Left",
+            command=self.on_return)
+        root.bind("<Left>", lambda _e: menu_search.invoke(MENU_ITEM_RETURN))
+        menu_search.add_separator()
+        menu_search.add_command(
             label=MENU_ITEM_GOTO, accelerator="Ctrl+G",
             command=self.on_goto)
         root.bind("<Control-g>", lambda _e: menu_search.invoke(MENU_ITEM_GOTO))
@@ -83,6 +94,8 @@ class MainWindow:
         print(events.PROJECT_CLOSED)
         self.menu_bar.entryconfig(MENU_SEARCH, state="disabled")
         self.menu_search.entryconfig(MENU_ITEM_GOTO, state="disabled")
+        self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state="disabled")
+        self.menu_search.entryconfig(MENU_ITEM_RETURN, state="disabled")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
         self.hide_dasm_view()
         self.hide_progress_bar()
@@ -184,6 +197,12 @@ class MainWindow:
                 return in_gui
             self.start_background_task(task, name="project_loader")
 
+    def on_follow(self, *args):
+        self.root.event_generate(events.FOLLOW)
+
+    def on_return(self, *args):
+        self.root.event_generate(events.RETURN)
+
     def on_goto(self, *args):
         address = tk.simpledialog.askinteger(
             title="dSNES", prompt="New analysis at address:",
@@ -191,6 +210,8 @@ class MainWindow:
             minvalue=0, maxvalue=0xffffff)
         if address is not None:
             self.session.new_analysis(address)
+            self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state="normal")
+            self.menu_search.entryconfig(MENU_ITEM_RETURN, state="normal")
             self.root.event_generate(events.ANALYSIS_UPDATED)
 
 
