@@ -187,9 +187,9 @@ class Analyser:
         Returns a list of (call_target, state_before_call).
         """
         item = self.disassembly[line_number]
-        if not isinstance(item, dsnes.disassembler.Disassembly):
+        if not isinstance(item, Disassembly):
             return []
-        address = item.addr
+        address = item.operation.addr
         # Use get() so the defaultdict doesn't add the empty list to itself.
         return self.calls_from.get(address, [])
 
