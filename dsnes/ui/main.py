@@ -28,6 +28,13 @@ class MainWindow:
         root.rowconfigure(0, weight=1)
         root.minsize(300, 150)
 
+        original_exception_handler = tk.Tk.report_callback_exception
+        def tk_exception_handler(self, exc, val, tb):
+            original_exception_handler(self, exc, val, tb)
+            import pdb
+            pdb.post_mortem()
+        tk.Tk.report_callback_exception = tk_exception_handler
+
         root.option_add('*tearOff', tk.FALSE)
         self.menu_bar = menu_bar = tk.Menu(root)
         root["menu"] = menu_bar
