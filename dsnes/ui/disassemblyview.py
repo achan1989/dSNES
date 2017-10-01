@@ -22,7 +22,7 @@ class DisassemblyView(ttk.Frame):
         dasm["padding"] = 0
         dasm.column("#0", stretch=True)
 
-        # Map displayed item/index to actual item/index (for multi-line items).
+        # Map displayed id to to displayed index/actual index/item.
         self.item_lookup = {}
         # Map actual index to displayed id/index/item.
         self.display_lookup = {}
@@ -41,6 +41,7 @@ class DisassemblyView(ttk.Frame):
         dasm['xscrollcommand'] = hscroll.set
 
         dasm.bind("<Button-1>", self.handle_dasm_click)
+        dasm.bind("<<TreeviewSelect>>", self.handle_selection_change)
         app.root.bind(
             events.ANALYSIS_UPDATED, self.handle_analysis_updated, add=True)
 
@@ -48,6 +49,15 @@ class DisassemblyView(ttk.Frame):
         # Prevent resizing columns.
         if self.dasm.identify_region(evt.x, evt.y) == "separator":
             return "break"
+
+    def handle_selection_change(self, *args):
+        selection = self.dasm.selection()
+        assert len(selection) == 1
+        selected_id = selection[0]
+        disp_idx, orig_index, _ = self.item_lookup[selected_id]
+        self.app.session.line_number = orig_index
+        print("<<TreeviewSelect>> id={}, disp_idx={}, orig_idx={}".format(
+            selected_id, disp_idx, orig_index))
 
     def handle_analysis_updated(self, *args):
         print(events.ANALYSIS_UPDATED)
@@ -95,7 +105,7 @@ class DisassemblyView(ttk.Frame):
         text = item.text + ":"
         identity = self.dasm.insert(parent="", index="end", text=text)
         display_index = self.dasm.index(identity)
-        self.item_lookup[display_index] = (orig_index, item)
+        self.item_lookup[identity] = (display_index, orig_index, item)
         self.display_lookup[orig_index] = (identity, display_index, item)
 
     def add_pre_comment(self, item, orig_index):
@@ -105,10 +115,11 @@ class DisassemblyView(ttk.Frame):
             text = " " + line
             identity = self.dasm.insert(parent="", index="end", text=text)
             display_index = self.dasm.index(identity)
-            self.item_lookup[display_index] = (orig_index, item)
+            self.item_lookup[identity] = (display_index, orig_index, item)
             # This points to the first line of the multi-line entry.
             if first:
-                self.display_lookup[orig_index] = (identity, display_index, item)
+                self.display_lookup[orig_index] = \
+                    (identity, display_index, item)
                 first = False
 
     def add_error(self, item, orig_index):
@@ -120,7 +131,7 @@ class DisassemblyView(ttk.Frame):
             state=item.state.encode())
         identity = self.dasm.insert(parent="", index="end", text=text)
         display_index = self.dasm.index(identity)
-        self.item_lookup[display_index] = (orig_index, item)
+        self.item_lookup[identity] = (display_index, orig_index, item)
         self.display_lookup[orig_index] = (identity, display_index, item)
 
     def add_disassembly(self, item, orig_index):
@@ -135,7 +146,7 @@ class DisassemblyView(ttk.Frame):
                     state=item.operation.state.encode()))
         identity = self.dasm.insert(parent="", index="end", text=text)
         display_index = self.dasm.index(identity)
-        self.item_lookup[display_index] = (orig_index, item)
+        self.item_lookup[identity] = (display_index, orig_index, item)
         self.display_lookup[orig_index] = (identity, display_index, item)
 
 def format_address(addr):
