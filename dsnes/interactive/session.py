@@ -75,11 +75,12 @@ class Session:
         return analyser.get_calls_from(line_number or self.line_number)
 
     def follow_call(self, target, state):
-        analyser = self.current_analysis
-        if not analyser:
+        current_analyser = self.current_analysis
+        current_line = self.line_number
+        if not current_analyser:
             raise RuntimeError("No analysis is open")
         valid = False
-        for t, s in analyser.get_calls_from(self.line_number):
+        for t, s in current_analyser.get_calls_from(self.line_number):
             if target == t and s == s:
                 valid = True
                 break
@@ -90,7 +91,7 @@ class Session:
         follow_analyser.analyse_function(target, state)
         self.line_number = 0
 
-        self.analysis_stack.append((analyser, self.line_number))
+        self.analysis_stack.append((current_analyser, current_line))
         self.current_analysis = follow_analyser
 
     def jump_back(self):

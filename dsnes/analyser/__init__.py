@@ -130,6 +130,8 @@ class Analyser:
                             import pdb
                             pdb.set_trace()
                         queue.append(taken_addr)
+                    elif action is dsnes.NextAction.ret:
+                        break
                     else:
                         raise NotImplementedError(
                             "Analyser can't handle {}".format(action))

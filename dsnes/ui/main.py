@@ -74,8 +74,6 @@ class MainWindow:
 
         self.dasm_view = dasm_view = dsnes.ui.DisassemblyView(
             app=self, master=mainframe)
-        dasm_view.columnconfigure(0, weight=1)
-        dasm_view.rowconfigure(0, weight=1)
 
         self.progress_bar = progress_bar = ttk.Progressbar(
             mainframe, orient="horizontal", mode="indeterminate")

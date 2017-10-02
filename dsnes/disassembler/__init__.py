@@ -993,7 +993,7 @@ class BranchCond(InstructionType):
             state.c = True
             return state
         else:
-            return super().new_state(*args)
+            return super().new_state(addr, state, opcode, op0, op1, op2)
 
 class BranchAlways(InstructionType):
     nbytes = 2
