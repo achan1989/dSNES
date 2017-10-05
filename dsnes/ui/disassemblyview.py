@@ -80,6 +80,13 @@ class DisassemblyView(ttk.Frame):
         root.bind(
             events.RETURN, self.handle_return, add=True)
 
+    def get_selected(self):
+        selection = self.dasm.selection()
+        assert len(selection) == 1
+        selected_id = selection[0]
+        display_index, orig_index, item = self.item_lookup[selected_id]
+        return selected_id, display_index, orig_index, item
+
     def handle_project_closed(self, *args):
         print(events.PROJECT_CLOSED + " dasmview")
         menu_bar = self.app.menu_bar
@@ -104,16 +111,25 @@ class DisassemblyView(ttk.Frame):
             return "break"
 
     def handle_selection_change(self, *args):
-        selection = self.dasm.selection()
-        assert len(selection) == 1
-        selected_id = selection[0]
-        disp_idx, orig_index, _ = self.item_lookup[selected_id]
+        selected_id, display_index, orig_index, item = self.get_selected()
         self.app.session.line_number = orig_index
-        print("<<TreeviewSelect>> id={}, disp_idx={}, orig_idx={}".format(
-            selected_id, disp_idx, orig_index))
+        self.dasm.focus_set()
+        self.dasm.focus(selected_id)
+        self.dasm.see(selected_id)
+        print(
+            "<<TreeviewSelect>> id={}, display_index={}, orig_index={}".format(
+                selected_id, display_index, orig_index))
+
+        # Can we follow a jump/call?
+        calls = self.app.session.get_calls_from_line(orig_index)
+        if len(calls) == 0:
+            follow_state = "disabled"
+        else:
+            follow_state = "normal"
+        self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state=follow_state)
 
     def handle_analysis_updated(self, *args):
-        print(events.ANALYSIS_UPDATED)
+        print(events.ANALYSIS_UPDATED + " dasmview")
         dasm = self.dasm
         old_items = self.dasm.get_children()
         if old_items:
@@ -127,9 +143,6 @@ class DisassemblyView(ttk.Frame):
             self.add_item(item, idx, idx==curr_selected_idx)
         identity, _, _ = self.display_lookup[curr_selected_idx]
         dasm.selection_set(identity)
-        dasm.focus_set()
-        dasm.focus(identity)
-        dasm.see(identity)
 
         # Resize the column to fit the widest item.
         # This lets the Treeview work properly with the horizontal scrollbar.
@@ -142,14 +155,16 @@ class DisassemblyView(ttk.Frame):
                 dasm.column("#0", width=width, minwidth=width)
                 col_width = width
 
-        if self.app.session.current_analysis:
-            menu_state = "normal"
-        else:
-            menu_state = "disabled"
-
         menu_search = self.menu_search
-        menu_search.entryconfig(MENU_ITEM_FOLLOW, state=menu_state)
-        menu_search.entryconfig(MENU_ITEM_RETURN, state=menu_state)
+        if self.app.session.current_analysis:
+
+            if self.app.session.can_jump_back():
+                back_state = "normal"
+            else:
+                back_state = "disabled"
+            menu_search.entryconfig(MENU_ITEM_RETURN, state=back_state)
+        else:
+            menu_search.entryconfig(MENU_ITEM_RETURN, state="disabled")
 
     def on_follow(self, *args):
         self.app.root.event_generate(events.FOLLOW)
@@ -167,7 +182,7 @@ class DisassemblyView(ttk.Frame):
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def handle_follow(self, *args):
-        print(events.FOLLOW)
+        print(events.FOLLOW + " dasmview")
         selection = self.dasm.selection()
         assert len(selection) == 1
         selected_id = selection[0]
@@ -184,7 +199,7 @@ class DisassemblyView(ttk.Frame):
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def handle_return(self, *args):
-        print(events.RETURN)
+        print(events.RETURN + " dasmview")
         try:
             self.app.session.jump_back()
         except dsnes.interactive.NoOperation:

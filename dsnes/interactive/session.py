@@ -94,6 +94,9 @@ class Session:
         self.analysis_stack.append((current_analyser, current_line))
         self.current_analysis = follow_analyser
 
+    def can_jump_back(self):
+        return len(self.analysis_stack) > 0
+
     def jump_back(self):
         try:
             analyser, line_number = self.analysis_stack.pop()
