@@ -1,6 +1,7 @@
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
+import argparse
 import queue
 import threading
 import tkinter as tk
@@ -21,8 +22,9 @@ MENU_ITEM_RETURN = "Undo follow"
 
 
 class MainWindow:
-    def __init__(self):
+    def __init__(self, path_to_load=None):
         self.session = dsnes.interactive.Session()
+        self.path_to_load = path_to_load
 
         self.root = root = tk.Tk()
         root.title("dSNES")
@@ -86,6 +88,9 @@ class MainWindow:
         root.event_generate(events.PROJECT_CLOSED)
 
     def run(self):
+        path_to_load = self.path_to_load
+        if path_to_load:
+            self._do_load(path_to_load)
         return self.root.mainloop()
 
     def handle_project_closed(self, *args):
@@ -179,21 +184,24 @@ class MainWindow:
             title="Choose a Project Directory",
             mustexist=True)
         if dir_path != "":
-            self.root.event_generate(events.PROJECT_LOADING)
-            def task():
-                try:
-                    self.session.load_project(dir_path)
-                    def in_gui():
-                        self.root.event_generate(events.PROJECT_LOADED)
-                except Exception as ex:
-                    ex_closure = ex
-                    def in_gui():
-                        self.root.event_generate(events.PROJECT_CLOSED)
-                        messagebox.showerror(
-                            message="Couldn't load project.\n\n{}".format(
-                                ex_closure))
-                return in_gui
-            self.start_background_task(task, name="project_loader")
+            self._do_load(dir_path)
+
+    def _do_load(self, dir_path):
+        self.root.event_generate(events.PROJECT_LOADING)
+        def task():
+            try:
+                self.session.load_project(dir_path)
+                def in_gui():
+                    self.root.event_generate(events.PROJECT_LOADED)
+            except Exception as ex:
+                ex_closure = ex
+                def in_gui():
+                    self.root.event_generate(events.PROJECT_CLOSED)
+                    messagebox.showerror(
+                        message="Couldn't load project.\n\n{}".format(
+                            ex_closure))
+            return in_gui
+        self.start_background_task(task, name="project_loader")
 
     def on_follow(self, *args):
         self.root.event_generate(events.FOLLOW)
@@ -214,4 +222,8 @@ class MainWindow:
 
 
 def start():
-    MainWindow().run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("project", default=None, nargs='?')
+    args = parser.parse_args()
+
+    MainWindow(args.project).run()
