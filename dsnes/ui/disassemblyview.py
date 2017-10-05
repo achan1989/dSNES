@@ -68,6 +68,8 @@ class DisassemblyView(ttk.Frame):
         dasm['xscrollcommand'] = hscroll.set
 
         dasm.bind("<Button-1>", self.handle_dasm_click)
+        dasm.bind("<Home>", self.handle_dasm_home)
+        dasm.bind("<End>", self.handle_dasm_end)
         dasm.bind("<<TreeviewSelect>>", self.handle_selection_change)
         root.bind(
             events.PROJECT_CLOSED, self.handle_project_closed, add=True)
@@ -109,6 +111,18 @@ class DisassemblyView(ttk.Frame):
         # Prevent resizing columns.
         if self.dasm.identify_region(evt.x, evt.y) == "separator":
             return "break"
+
+    def handle_dasm_home(self, evt):
+        items = self.dasm.get_children()
+        if not items:
+            return
+        self.dasm.selection_set(items[0])
+
+    def handle_dasm_end(self, evt):
+        items = self.dasm.get_children()
+        if not items:
+            return
+        self.dasm.selection_set(items[-1])
 
     def handle_selection_change(self, *args):
         selected_id, display_index, orig_index, item = self.get_selected()
