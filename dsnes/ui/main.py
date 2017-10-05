@@ -15,11 +15,6 @@ MENU_FILE = "File"
 MENU_ITEM_OPEN_PROJECT = "Open Project..."
 MENU_ITEM_EXIT = "Exit"
 
-MENU_SEARCH = "Search"
-MENU_ITEM_GOTO = "Goto..."
-MENU_ITEM_FOLLOW = "Follow jump/call"
-MENU_ITEM_RETURN = "Undo follow"
-
 
 class MainWindow:
     def __init__(self, path_to_load=None):
@@ -53,22 +48,6 @@ class MainWindow:
         menu_file.add_command(label=MENU_ITEM_EXIT, command=self.root.destroy)
         menu_bar.add_cascade(label=MENU_FILE, menu=menu_file)
 
-        self.menu_search = menu_search = tk.Menu(menu_bar)
-        menu_search.add_command(
-            label=MENU_ITEM_FOLLOW, accelerator="Right",
-            command=self.on_follow)
-        root.bind("<Right>", lambda _e: menu_search.invoke(MENU_ITEM_FOLLOW))
-        menu_search.add_command(
-            label=MENU_ITEM_RETURN, accelerator="Left",
-            command=self.on_return)
-        root.bind("<Left>", lambda _e: menu_search.invoke(MENU_ITEM_RETURN))
-        menu_search.add_separator()
-        menu_search.add_command(
-            label=MENU_ITEM_GOTO, accelerator="Ctrl+G",
-            command=self.on_goto)
-        root.bind("<Control-g>", lambda _e: menu_search.invoke(MENU_ITEM_GOTO))
-        menu_bar.add_cascade(label=MENU_SEARCH, menu=menu_search)
-
         self.mainframe = mainframe = ttk.Frame(root)
         mainframe.grid(column=0, row=0, sticky="nesw")
         mainframe.columnconfigure(0, weight=1)
@@ -94,25 +73,19 @@ class MainWindow:
         return self.root.mainloop()
 
     def handle_project_closed(self, *args):
-        print(events.PROJECT_CLOSED)
-        self.menu_bar.entryconfig(MENU_SEARCH, state="disabled")
-        self.menu_search.entryconfig(MENU_ITEM_GOTO, state="disabled")
-        self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state="disabled")
-        self.menu_search.entryconfig(MENU_ITEM_RETURN, state="disabled")
+        print(events.PROJECT_CLOSED + " main")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
         self.hide_dasm_view()
         self.hide_progress_bar()
 
     def handle_project_loading(self, *args):
-        print(events.PROJECT_LOADING)
+        print(events.PROJECT_LOADING + " main")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="disabled")
         self.hide_dasm_view()
         self.show_progress_bar()
 
     def handle_project_loaded(self, *args):
-        print(events.PROJECT_LOADED)
-        self.menu_bar.entryconfig(MENU_SEARCH, state="normal")
-        self.menu_search.entryconfig(MENU_ITEM_GOTO, state="normal")
+        print(events.PROJECT_LOADED + " main")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
         self.hide_progress_bar()
         self.show_dasm_view()
@@ -202,23 +175,6 @@ class MainWindow:
                             ex_closure))
             return in_gui
         self.start_background_task(task, name="project_loader")
-
-    def on_follow(self, *args):
-        self.root.event_generate(events.FOLLOW)
-
-    def on_return(self, *args):
-        self.root.event_generate(events.RETURN)
-
-    def on_goto(self, *args):
-        address = tk.simpledialog.askinteger(
-            title="dSNES", prompt="New analysis at address:",
-            initialvalue="0x",
-            minvalue=0, maxvalue=0xffffff)
-        if address is not None:
-            self.session.new_analysis(address)
-            self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state="normal")
-            self.menu_search.entryconfig(MENU_ITEM_RETURN, state="normal")
-            self.root.event_generate(events.ANALYSIS_UPDATED)
 
 
 def start():

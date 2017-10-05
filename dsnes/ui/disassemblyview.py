@@ -9,6 +9,12 @@ import dsnes
 from dsnes.ui import events
 
 
+MENU_SEARCH = "Search"
+MENU_ITEM_GOTO = "Goto..."
+MENU_ITEM_FOLLOW = "Follow jump/call"
+MENU_ITEM_RETURN = "Undo follow"
+
+
 class DisassemblyView(ttk.Frame):
     def __init__(self, app, master=None):
         super().__init__(master)
@@ -17,6 +23,24 @@ class DisassemblyView(ttk.Frame):
         self.rowconfigure(0, weight=1)
         self.columnconfigure(1, weight=0)
         self.rowconfigure(1, weight=0)
+
+        root = app.root
+
+        self.menu_search = menu_search = tk.Menu(app.menu_bar)
+        menu_search.add_command(
+            label=MENU_ITEM_FOLLOW, accelerator="Right",
+            command=self.on_follow)
+        root.bind("<Right>", lambda _e: menu_search.invoke(MENU_ITEM_FOLLOW))
+        menu_search.add_command(
+            label=MENU_ITEM_RETURN, accelerator="Left",
+            command=self.on_return)
+        root.bind("<Left>", lambda _e: menu_search.invoke(MENU_ITEM_RETURN))
+        menu_search.add_separator()
+        menu_search.add_command(
+            label=MENU_ITEM_GOTO, accelerator="Ctrl+G",
+            command=self.on_goto)
+        root.bind("<Control-g>", lambda _e: menu_search.invoke(MENU_ITEM_GOTO))
+        app.menu_bar.add_cascade(label=MENU_SEARCH, menu=menu_search)
 
         self.dasm = dasm = ttk.Treeview(self)
         dasm.grid(column=0, row=0, sticky="nsew")
@@ -45,12 +69,34 @@ class DisassemblyView(ttk.Frame):
 
         dasm.bind("<Button-1>", self.handle_dasm_click)
         dasm.bind("<<TreeviewSelect>>", self.handle_selection_change)
-        app.root.bind(
+        root.bind(
+            events.PROJECT_CLOSED, self.handle_project_closed, add=True)
+        root.bind(
+            events.PROJECT_LOADED, self.handle_project_loaded, add=True)
+        root.bind(
             events.ANALYSIS_UPDATED, self.handle_analysis_updated, add=True)
-        app.root.bind(
+        root.bind(
             events.FOLLOW, self.handle_follow, add=True)
-        app.root.bind(
+        root.bind(
             events.RETURN, self.handle_return, add=True)
+
+    def handle_project_closed(self, *args):
+        print(events.PROJECT_CLOSED + " dasmview")
+        menu_bar = self.app.menu_bar
+        menu_search = self.menu_search
+
+        menu_bar.entryconfig(MENU_SEARCH, state="disabled")
+        menu_search.entryconfig(MENU_ITEM_GOTO, state="disabled")
+        menu_search.entryconfig(MENU_ITEM_FOLLOW, state="disabled")
+        menu_search.entryconfig(MENU_ITEM_RETURN, state="disabled")
+
+    def handle_project_loaded(self, *args):
+        print(events.PROJECT_LOADED + " dasmview")
+        menu_bar = self.app.menu_bar
+        menu_search = self.menu_search
+
+        menu_bar.entryconfig(MENU_SEARCH, state="normal")
+        menu_search.entryconfig(MENU_ITEM_GOTO, state="normal")
 
     def handle_dasm_click(self, evt):
         # Prevent resizing columns.
@@ -95,6 +141,30 @@ class DisassemblyView(ttk.Frame):
             if col_width < width:
                 dasm.column("#0", width=width, minwidth=width)
                 col_width = width
+
+        if self.app.session.current_analysis:
+            menu_state = "normal"
+        else:
+            menu_state = "disabled"
+
+        menu_search = self.menu_search
+        menu_search.entryconfig(MENU_ITEM_FOLLOW, state=menu_state)
+        menu_search.entryconfig(MENU_ITEM_RETURN, state=menu_state)
+
+    def on_follow(self, *args):
+        self.app.root.event_generate(events.FOLLOW)
+
+    def on_return(self, *args):
+        self.app.root.event_generate(events.RETURN)
+
+    def on_goto(self, *args):
+        address = tk.simpledialog.askinteger(
+            title="dSNES", prompt="New analysis at address:",
+            initialvalue="0x",
+            minvalue=0, maxvalue=0xffffff)
+        if address is not None:
+            self.app.session.new_analysis(address)
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def handle_follow(self, *args):
         print(events.FOLLOW)
