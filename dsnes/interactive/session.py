@@ -68,6 +68,18 @@ class Session:
         self.current_analysis = analyser
         self.line_number = 0
 
+    def refresh_analysis(self):
+        address = self.current_analysis.start_address
+        assert address is not None
+
+        new_analysis = dsnes.Analyser(self.project)
+        new_analysis.analyse_function(address)
+        self.current_analysis = new_analysis
+
+        max_line = len(new_analysis.disassembly) - 1
+        if self.line_number > max_line:
+            self.line_number = max_line
+
     def get_calls_from_line(self, line_number=None):
         analyser = self.current_analysis
         if not analyser:

@@ -14,6 +14,9 @@ MENU_ITEM_GOTO = "Goto..."
 MENU_ITEM_FOLLOW = "Follow jump/call"
 MENU_ITEM_RETURN = "Undo follow"
 
+MENU_ANNOTATE = "Annotate"
+MENU_ITEM_INLINE_COMMENT = "Inline comment"
+
 
 class DisassemblyView(ttk.Frame):
     def __init__(self, app, master=None):
@@ -41,6 +44,14 @@ class DisassemblyView(ttk.Frame):
             command=self.on_goto)
         root.bind("<Control-g>", lambda _e: menu_search.invoke(MENU_ITEM_GOTO))
         app.menu_bar.add_cascade(label=MENU_SEARCH, menu=menu_search)
+
+        self.menu_annotate = menu_annotate = tk.Menu(app.menu_bar)
+        menu_annotate.add_command(
+            label=MENU_ITEM_INLINE_COMMENT, accelerator="I",
+            command=self.on_inline_comment)
+        root.bind("<i>",
+            lambda _e: menu_annotate.invoke(MENU_ITEM_INLINE_COMMENT))
+        app.menu_bar.add_cascade(label=MENU_ANNOTATE, menu=menu_annotate)
 
         self.dasm = dasm = ttk.Treeview(self)
         dasm.grid(column=0, row=0, sticky="nsew")
@@ -93,11 +104,15 @@ class DisassemblyView(ttk.Frame):
         print(events.PROJECT_CLOSED + " dasmview")
         menu_bar = self.app.menu_bar
         menu_search = self.menu_search
+        menu_annotate = self.menu_annotate
 
         menu_bar.entryconfig(MENU_SEARCH, state="disabled")
         menu_search.entryconfig(MENU_ITEM_GOTO, state="disabled")
         menu_search.entryconfig(MENU_ITEM_FOLLOW, state="disabled")
         menu_search.entryconfig(MENU_ITEM_RETURN, state="disabled")
+
+        menu_bar.entryconfig(MENU_ANNOTATE, state="disabled")
+        menu_annotate.entryconfig(MENU_ITEM_INLINE_COMMENT, state="disabled")
 
     def handle_project_loaded(self, *args):
         print(events.PROJECT_LOADED + " dasmview")
@@ -142,6 +157,13 @@ class DisassemblyView(ttk.Frame):
             follow_state = "normal"
         self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state=follow_state)
 
+        # Can we add/edit an inline comment?
+        if item.kind == "disassembly":
+            ic_state = "normal"
+        else:
+            ic_state = "disabled"
+        self.menu_annotate.entryconfig(MENU_ITEM_INLINE_COMMENT, state=ic_state)
+
     def handle_analysis_updated(self, *args):
         print(events.ANALYSIS_UPDATED + " dasmview")
         dasm = self.dasm
@@ -169,8 +191,10 @@ class DisassemblyView(ttk.Frame):
                 dasm.column("#0", width=width, minwidth=width)
                 col_width = width
 
+        menu_bar = self.app.menu_bar
         menu_search = self.menu_search
         if self.app.session.current_analysis:
+            menu_bar.entryconfig(MENU_ANNOTATE, state="normal")
 
             if self.app.session.can_jump_back():
                 back_state = "normal"
@@ -178,6 +202,7 @@ class DisassemblyView(ttk.Frame):
                 back_state = "disabled"
             menu_search.entryconfig(MENU_ITEM_RETURN, state=back_state)
         else:
+            menu_bar.entryconfig(MENU_ANNOTATE, state="disabled")
             menu_search.entryconfig(MENU_ITEM_RETURN, state="disabled")
 
     def on_follow(self, *args):
@@ -193,6 +218,37 @@ class DisassemblyView(ttk.Frame):
             minvalue=0, maxvalue=0xffffff)
         if address is not None:
             self.app.session.new_analysis(address)
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def on_inline_comment(self, *args):
+        print("TODO inline comment")
+        selected_id, display_index, orig_index, item = self.get_selected()
+        assert item.kind == "disassembly"
+        address = item.operation.addr
+
+        old_comment = item.comment
+        print("Is currently {!r}".format(old_comment))
+        new_comment = tk.simpledialog.askstring(
+            title="dSNES", prompt="Inline comment:",
+            initialvalue=old_comment)
+        print("Got {!r}".format(new_comment))
+
+        refresh = True
+        if new_comment is None:
+            # Pressed cancel. Do nothing.
+            refresh = False
+        elif new_comment == "":
+            # Empty comment. Try to delete it.
+            try:
+                self.app.session.project.database.delete_inline_comment(address)
+            except LookupError:
+                refresh = False
+        else:
+            self.app.session.project.database.set_inline_comment(
+                address, new_comment)
+
+        if refresh:
+            self.app.session.refresh_analysis()
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def handle_follow(self, *args):
@@ -275,7 +331,7 @@ class DisassemblyView(ttk.Frame):
                                   for n in item.operation.raw]),
                     asm=item.operation.asm_str,
                     target=item.target_str,
-                    comment=item.comment,
+                    comment=item.comment or "",
                     state=item.operation.state.encode()))
         identity = self.dasm.insert(parent="", index="end", text=text)
         display_index = self.dasm.index(identity)

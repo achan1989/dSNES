@@ -41,6 +41,7 @@ class Disassembly:
 class Analyser:
     def __init__(self, project):
         self.project = project
+        self.start_address = None
         self.state = None
         self.operations = None
         self.disassembly = None
@@ -50,6 +51,7 @@ class Analyser:
         self.reset()
 
     def reset(self):
+        self.start_address = None
         self.state = dsnes.State()
         self.operations = []
         self.disassembly = []
@@ -58,6 +60,7 @@ class Analyser:
 
     def analyse_function(self, address, state=None, stop_before=None):
         self.reset()
+        self.start_address = address
         self._analyse_operations(address, state, stop_before)
         self._collate_disassembly()
 
@@ -235,7 +238,7 @@ class Analyser:
             raw=" ".join([format(n, "02x") for n in operation.raw]),
             asm=operation.asm_str,
             target=tgt_str,
-            comment=comment,
+            comment=comment or "",
             state=operation.state.encode())
         print(s)
 
@@ -280,7 +283,7 @@ class Analyser:
     def get_inline_comment_for(self, operation):
         user = self.project.database.get_inline_comment(operation.addr)
         default = operation.default_comment
-        return user or default or ""
+        return user or default or None
 
 
 def print_address(addr):

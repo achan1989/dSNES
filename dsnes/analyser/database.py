@@ -92,6 +92,15 @@ class Database:
         key = encode_address_key(addr)
         return self.data["inline_comments"].get(key, None)
 
+    def set_inline_comment(self, addr, comment):
+        assert comment is not None
+        key = encode_address_key(addr)
+        self.data["inline_comments"][key] = comment
+
+    def delete_inline_comment(self, addr):
+        key = encode_address_key(addr)
+        del self.data["inline_comments"][key]
+
     def load(self, path):
         self.path = path
         self.data = contoml.load(path)
