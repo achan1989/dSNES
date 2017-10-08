@@ -31,6 +31,7 @@ def parse_address_key(key):
 class Database:
     def __init__(self):
         self.path = None
+        self.is_dirty = False
         self.data = contoml.TOMLFile([])
         self.state_cache = {}
         self.state_delta_cache = {}
@@ -54,6 +55,7 @@ class Database:
         else:
             self.state_cache[addr] = state.clone()
             self.data["states"][key] = s
+        self.is_dirty = True
 
     def get_state_delta(self, addr):
         delta = self.state_delta_cache.get(addr, None)
@@ -64,6 +66,7 @@ class Database:
         s = delta.encode()
         self.state_delta_cache[addr] = delta
         self.data["state_deltas"][key] = s
+        self.is_dirty = True
 
     def get_label(self, addr):
         """Get the first label for a given address."""
@@ -96,14 +99,17 @@ class Database:
         assert comment is not None
         key = encode_address_key(addr)
         self.data["inline_comments"][key] = comment
+        self.is_dirty = True
 
     def delete_inline_comment(self, addr):
         key = encode_address_key(addr)
         del self.data["inline_comments"][key]
+        self.is_dirty = True
 
     def load(self, path):
         self.path = path
         self.data = contoml.load(path)
+        self.is_dirty = False
 
         self.state_cache = state_cache = {}
         for key, value in self.data["states"].items():
@@ -146,3 +152,4 @@ class Database:
     def save(self):
         path = self.path
         contoml.dump(self.data, path)
+        self.is_dirty = False

@@ -18,6 +18,10 @@ class Session:
         self.line_number = None
 
     @property
+    def has_unsaved_changes(self):
+        return self.project is not None and self.project.database.is_dirty
+
+    @property
     def line_number(self):
         return self._line_number
 

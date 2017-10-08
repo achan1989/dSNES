@@ -51,7 +51,7 @@ class MainWindow:
         root.bind(
             "<Control-s>", lambda _e: menu_file.invoke(MENU_ITEM_SAVE))
         menu_file.add_separator()
-        menu_file.add_command(label=MENU_ITEM_EXIT, command=self.root.destroy)
+        menu_file.add_command(label=MENU_ITEM_EXIT, command=self.before_exit)
         menu_bar.add_cascade(label=MENU_FILE, menu=menu_file)
 
         self.mainframe = mainframe = ttk.Frame(root)
@@ -70,6 +70,7 @@ class MainWindow:
         root.bind(events.PROJECT_CLOSED, self.handle_project_closed, add=True)
         root.bind(events.PROJECT_LOADING, self.handle_project_loading, add=True)
         root.bind(events.PROJECT_LOADED, self.handle_project_loaded, add=True)
+        root.protocol("WM_DELETE_WINDOW", self.before_exit)
         root.event_generate(events.PROJECT_CLOSED)
 
     def run(self):
@@ -77,6 +78,21 @@ class MainWindow:
         if path_to_load:
             self._do_load(path_to_load)
         return self.root.mainloop()
+
+    def before_exit(self, *args):
+        allow_exit = True
+        if self.session.has_unsaved_changes:
+            do_save = messagebox.askyesnocancel(
+                title="dSNES",
+                message="You have unsaved changes. Save before exit?")
+            if do_save is None:
+                # Cancelled the exit.
+                allow_exit = False
+            else:
+                if do_save:
+                    self.session.save_project()
+        if allow_exit:
+            self.root.destroy()
 
     def handle_project_closed(self, *args):
         print(events.PROJECT_CLOSED + " main")
