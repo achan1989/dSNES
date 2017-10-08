@@ -13,6 +13,7 @@ from dsnes.ui import events
 
 MENU_FILE = "File"
 MENU_ITEM_OPEN_PROJECT = "Open Project..."
+MENU_ITEM_SAVE = "Save"
 MENU_ITEM_EXIT = "Exit"
 
 
@@ -44,6 +45,11 @@ class MainWindow:
             command=self.on_open_project_menu)
         root.bind(
             "<Control-o>", lambda _e: menu_file.invoke(MENU_ITEM_OPEN_PROJECT))
+        menu_file.add_command(
+            label=MENU_ITEM_SAVE, accelerator="Ctrl+S",
+            command=self.on_save_menu)
+        root.bind(
+            "<Control-s>", lambda _e: menu_file.invoke(MENU_ITEM_SAVE))
         menu_file.add_separator()
         menu_file.add_command(label=MENU_ITEM_EXIT, command=self.root.destroy)
         menu_bar.add_cascade(label=MENU_FILE, menu=menu_file)
@@ -75,6 +81,7 @@ class MainWindow:
     def handle_project_closed(self, *args):
         print(events.PROJECT_CLOSED + " main")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
+        self.menu_file.entryconfig(MENU_ITEM_SAVE, state="disabled")
         self.hide_dasm_view()
         self.hide_progress_bar()
 
@@ -87,6 +94,7 @@ class MainWindow:
     def handle_project_loaded(self, *args):
         print(events.PROJECT_LOADED + " main")
         self.menu_file.entryconfig(MENU_ITEM_OPEN_PROJECT, state="normal")
+        self.menu_file.entryconfig(MENU_ITEM_SAVE, state="normal")
         self.hide_progress_bar()
         self.show_dasm_view()
 
@@ -158,6 +166,9 @@ class MainWindow:
             mustexist=True)
         if dir_path != "":
             self._do_load(dir_path)
+
+    def on_save_menu(self, *args):
+        self.session.save_project()
 
     def _do_load(self, dir_path):
         self.root.event_generate(events.PROJECT_LOADING)

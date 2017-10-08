@@ -61,6 +61,11 @@ class Session:
         self.project = dsnes.project.load(path)
         self.analysis_stack.clear()
 
+    def save_project(self):
+        if self.project is None:
+            raise RuntimeError("No project is loaded")
+        self.project.save()
+
     def new_analysis(self, address):
         analyser = dsnes.Analyser(self.project)
         analyser.analyse_function(address)

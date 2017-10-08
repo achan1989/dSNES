@@ -29,6 +29,10 @@ class Project:
         self.cartridge = dsnes.Cartridge()
         self.cartridge.load(self)
 
+    def save(self):
+        assert self.database
+        self.database.save()
+
     @staticmethod
     def load_config(path):
         assert os.path.isfile(path), "{} is not a file".format(path)
