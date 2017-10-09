@@ -16,6 +16,7 @@ MENU_ITEM_RETURN = "Undo follow"
 
 MENU_ANNOTATE = "Annotate"
 MENU_ITEM_INLINE_COMMENT = "Inline comment"
+MENU_ITEM_PRE_COMMENT = "Pre-comment"
 
 
 class DisassemblyView(ttk.Frame):
@@ -51,6 +52,10 @@ class DisassemblyView(ttk.Frame):
             command=self.on_inline_comment)
         root.bind("<i>",
             lambda _e: menu_annotate.invoke(MENU_ITEM_INLINE_COMMENT))
+        menu_annotate.add_command(
+            label=MENU_ITEM_PRE_COMMENT, accelerator="P",
+            command=self.on_pre_comment)
+        root.bind("<p>", lambda _e: menu_annotate.invoke(MENU_ITEM_PRE_COMMENT))
         app.menu_bar.add_cascade(label=MENU_ANNOTATE, menu=menu_annotate)
 
         self.dasm = dasm = ttk.Treeview(self)
@@ -113,6 +118,7 @@ class DisassemblyView(ttk.Frame):
 
         menu_bar.entryconfig(MENU_ANNOTATE, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_INLINE_COMMENT, state="disabled")
+        menu_annotate.entryconfig(MENU_ITEM_PRE_COMMENT, state="disabled")
 
     def handle_project_loaded(self, *args):
         print(events.PROJECT_LOADED + " dasmview")
@@ -157,12 +163,19 @@ class DisassemblyView(ttk.Frame):
             follow_state = "normal"
         self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state=follow_state)
 
-        # Can we add/edit an inline comment?
+        # Can we add/edit comments?
         if item.kind == "disassembly":
-            ic_state = "normal"
+            comment_state = "normal"
         else:
-            ic_state = "disabled"
-        self.menu_annotate.entryconfig(MENU_ITEM_INLINE_COMMENT, state=ic_state)
+            comment_state = "disabled"
+        self.menu_annotate.entryconfig(
+            MENU_ITEM_INLINE_COMMENT, state=comment_state)
+        self.menu_annotate.entryconfig(
+            MENU_ITEM_PRE_COMMENT, state=comment_state)
+
+        if item.kind == "pre-comment":
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_PRE_COMMENT, state="normal")
 
     def handle_analysis_updated(self, *args):
         print(events.ANALYSIS_UPDATED + " dasmview")
@@ -221,17 +234,14 @@ class DisassemblyView(ttk.Frame):
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def on_inline_comment(self, *args):
-        print("TODO inline comment")
         selected_id, display_index, orig_index, item = self.get_selected()
         assert item.kind == "disassembly"
         address = item.operation.addr
 
         old_comment = item.comment
-        print("Is currently {!r}".format(old_comment))
         new_comment = tk.simpledialog.askstring(
             title="dSNES", prompt="Inline comment:",
             initialvalue=old_comment)
-        print("Got {!r}".format(new_comment))
 
         refresh = True
         if new_comment is None:
@@ -246,6 +256,58 @@ class DisassemblyView(ttk.Frame):
         else:
             self.app.session.project.database.set_inline_comment(
                 address, new_comment)
+
+        if refresh:
+            self.app.session.refresh_analysis()
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def on_pre_comment(self, *args):
+        selected_id, display_index, orig_index, item = self.get_selected()
+        assert item.kind in ("disassembly", "pre-comment")
+        address = address = item.operation.addr
+        old_comment = None
+
+        if item.kind == "disassembly":
+            comment_index = orig_index - 1
+            try:
+                _, _, comment_item = self.display_lookup[comment_index]
+            except LookupError:
+                pass
+            else:
+                if comment_item.kind == "pre-comment":
+                    assert comment_item.operation == item.operation
+                    old_comment = comment_item.text
+        else:
+            old_comment = item.text
+
+        print("Old pre-comment is:\n{!r}".format(old_comment))
+
+        text_dialog = dsnes.ui.TextDialog(
+            title="dSNES", prompt="Pre-comment:",
+            initialvalue=old_comment, parent=self.app.root)
+        new_comment = text_dialog.result
+
+        print("New is:\n{!r}".format(new_comment))
+
+        refresh = True
+        if new_comment is None:
+            # Cancelled.
+            refresh = False
+        else:
+            # There's always a trailing newline. Remove it.
+            assert new_comment[-1] == "\n"
+            new_comment = new_comment[:-1]
+
+            if new_comment == "":
+                # Empty comment. Try to delete it.
+                try:
+                    self.app.session.project.database.delete_pre_comment(
+                        address)
+                except LookupError:
+                    refresh = False
+            else:
+                self.app.session.project.database.set_pre_comment(
+                    address, new_comment)
 
         if refresh:
             self.app.session.refresh_analysis()

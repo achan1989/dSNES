@@ -90,6 +90,17 @@ class Database:
         key = encode_address_key(addr)
         return self.data["pre_comments"].get(key, None)
 
+    def set_pre_comment(self, addr, comment):
+        assert comment is not None
+        key = encode_address_key(addr)
+        self.data["pre_comments"][key] = comment
+        self.is_dirty = True
+
+    def delete_pre_comment(self, addr):
+        key = encode_address_key(addr)
+        del self.data["pre_comments"][key]
+        self.is_dirty = True
+
     def get_inline_comment(self, addr):
         """Get the inline comment for an address."""
         key = encode_address_key(addr)
