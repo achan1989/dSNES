@@ -30,8 +30,7 @@ setup(
 
     packages=packages,
 
-    # Use this specific version of contoml because of monkey-patch bug fix.
-    install_requires=['contoml == 0.32'],
+    install_requires=['toml'],
     tests_require=['pytest'],
 
     entry_points={

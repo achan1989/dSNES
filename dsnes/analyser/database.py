@@ -1,8 +1,9 @@
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
+import toml
+
 import dsnes
-from dsnes import contoml_fix as contoml
 
 
 def load(path):
@@ -32,7 +33,7 @@ class Database:
     def __init__(self):
         self.path = None
         self.is_dirty = False
-        self.data = contoml.TOMLFile([])
+        self.data = {}
         self.state_cache = {}
         self.state_delta_cache = {}
         self.labels_of_address = {}
@@ -119,7 +120,7 @@ class Database:
 
     def load(self, path):
         self.path = path
-        self.data = contoml.load(path)
+        self.data = toml.load(path)
         self.is_dirty = False
 
         self.state_cache = state_cache = {}
@@ -145,7 +146,6 @@ class Database:
         self.labels_of_address = {}
         self.address_of_label = {}
         for key, labels in self.data["labels"].items():
-            labels = contoml.array_to_list(labels)
             addr = parse_address_key(key)
             for label in labels:
                 if label in self.address_of_label:
@@ -162,5 +162,6 @@ class Database:
 
     def save(self):
         path = self.path
-        contoml.dump(self.data, path)
+        with open(path, 'w') as outfile:
+            toml.dump(self.data, outfile)
         self.is_dirty = False

@@ -4,8 +4,9 @@
 
 import os
 
+import toml
+
 import dsnes
-from dsnes import contoml_fix as contoml
 
 
 def load(path):
@@ -36,7 +37,7 @@ class Project:
     @staticmethod
     def load_config(path):
         assert os.path.isfile(path), "{} is not a file".format(path)
-        config = contoml.load(path)
+        config = toml.load(path)
         return config
 
     @staticmethod
