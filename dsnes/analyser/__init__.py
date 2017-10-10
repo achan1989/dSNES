@@ -42,6 +42,7 @@ class Analyser:
     def __init__(self, project):
         self.project = project
         self.start_address = None
+        self.start_state = None
         self.state = None
         self.operations = None
         self.disassembly = None
@@ -52,6 +53,7 @@ class Analyser:
 
     def reset(self):
         self.start_address = None
+        self.start_state = None
         self.state = dsnes.State()
         self.operations = []
         self.disassembly = []
@@ -61,6 +63,7 @@ class Analyser:
     def analyse_function(self, address, state=None, stop_before=None):
         self.reset()
         self.start_address = address
+        self.start_state = state
         self._analyse_operations(address, state, stop_before)
         self._collate_disassembly()
 

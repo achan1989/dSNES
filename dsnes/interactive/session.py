@@ -80,9 +80,10 @@ class Session:
     def refresh_analysis(self):
         address = self.current_analysis.start_address
         assert address is not None
+        state = self.current_analysis.start_state
 
         new_analysis = dsnes.Analyser(self.project)
-        new_analysis.analyse_function(address)
+        new_analysis.analyse_function(address, state)
         self.current_analysis = new_analysis
 
         max_line = len(new_analysis.disassembly) - 1
