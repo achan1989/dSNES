@@ -98,3 +98,79 @@ class TextDialog(ResizeDialog):
     def validate(self):
         self.result = self.getresult()
         return 1
+
+
+class LabelDialog(ResizeDialog):
+    """Dialog for modifying a line's labels."""
+    def __init__(self, title, prompt, get_labels_fn, validate_fn, add_fn,
+                 remove_fn, parent=None):
+        if not parent:
+            parent = tk._default_root
+
+        self.prompt = prompt
+        self.get_labels_fn = get_labels_fn
+        self.validate_fn = validate_fn
+        self.add_fn = add_fn
+        self.remove_fn = remove_fn
+        self.labels = tk.Variable()
+        self.label_listbox = None
+        self.made_changes = False
+        super().__init__(parent, title)
+
+    def body(self, master):
+        w = tk.Label(master, text=self.prompt, justify="left")
+        w.grid(column=0, row=0, padx=5, sticky="w")
+        master.columnconfigure(0, weight=1)
+        master.rowconfigure(0, weight=0)
+
+        self.label_listbox = label_listbox = tk.Listbox(
+            master, listvariable=self.labels, selectmode="extended")
+        self.update_list()
+        label_listbox.grid(column=0, row=1, padx=5, sticky="nesw")
+        master.rowconfigure(1, weight=1)
+
+        list_controls = ttk.Frame(master)
+        list_controls.grid(column=0, row=2, sticky="ew")
+        master.rowconfigure(2, weight=0)
+
+        w = ttk.Button(list_controls, text="+", width=3, command=self.on_add)
+        w.pack(side="left")
+        w = ttk.Button(list_controls, text="-", width=3, command=self.on_remove)
+        w.pack(side="left")
+
+        return label_listbox
+
+    def buttonbox(self):
+        box = ttk.Frame(self)
+
+        w = ttk.Button(box, text="Done", width=10, command=self.cancel)
+        w.pack(side="right", padx=10, pady=10)
+
+        self.bind("<Escape>", self.cancel)
+
+        return box
+
+    def update_list(self):
+        self.labels.set(self.get_labels_fn())
+        n = len(self.labels.get())
+        if n <= 6:
+            height = 6
+        else:
+            height = n + 1
+        self.label_listbox["height"] = height
+
+    def on_add(self, *args):
+        print("TODO on add")
+
+    def on_remove(self, *args):
+        selected = self.label_listbox.curselection()
+        if not selected:
+            return
+
+        labels = self.labels.get()
+        for idx in selected:
+            label = labels[idx]
+            self.remove_fn(label)
+            self.made_changes = True
+
+        self.update_list()

@@ -127,3 +127,15 @@ class Session:
         else:
             self.current_analysis = analyser
             self.line_number = line_number
+
+    def can_create_new_label(self, text):
+        """Check if a given label can be created."""
+        return text not in self.project.database.get_all_labels()
+
+    def apply_new_label(self, addr, text):
+        """Apply a label to an address."""
+        self.project.database.add_label(addr, text)
+
+    def remove_label(self, addr, text):
+        """Remove the label from an address."""
+        self.project.database.remove_label(addr, text)

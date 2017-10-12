@@ -82,9 +82,44 @@ class Database:
         labels = self.labels_of_address.get(addr, [])
         return labels
 
+    def get_all_labels(self):
+        """Get all labels in use."""
+        labels = [x for x in self.address_of_label.keys()]
+        return labels
+
     def get_address_with_label(self, label):
         """Get the address that the label applies to."""
         return self.address_of_label.get(label, None)
+
+    def add_label(self, addr, label):
+        """Add a label to an address."""
+        if label in self.get_all_labels():
+            raise ValueError("Label {!r} is already in use".format(label))
+        TODO
+
+    def remove_label(self, addr, label):
+        """Remove a label from an address."""
+        stored_address = self.address_of_label.get(label, None)
+        if stored_address is None:
+            assert label not in self.address_of_label
+            raise ValueError("Label {!r} does not exist".format(label))
+        if stored_address != addr:
+            raise ValueError(
+                "Label {!r} is not applied to the address {}".format(
+                    label, addr))
+        key = encode_address_key(addr)
+
+        label_list = self.data["labels"][key]
+        label_list.remove(label)
+        if len(label_list) == 0:
+            del self.data["labels"][key]
+        del self.address_of_label[label]
+        label_list = self.labels_of_address[addr]
+        label_list.remove(label)
+        if len(label_list) == 0:
+            del self.labels_of_address[addr]
+
+        self.is_dirty = True
 
     def get_pre_comment(self, addr):
         """Get the pre-instruction comment for an address."""

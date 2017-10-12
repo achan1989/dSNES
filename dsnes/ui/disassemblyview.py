@@ -17,6 +17,7 @@ MENU_ITEM_RETURN = "Undo follow"
 MENU_ANNOTATE = "Annotate"
 MENU_ITEM_INLINE_COMMENT = "Inline comment"
 MENU_ITEM_PRE_COMMENT = "Pre-comment"
+MENU_ITEM_LABEL = "Label"
 
 
 class DisassemblyView(ttk.Frame):
@@ -56,6 +57,10 @@ class DisassemblyView(ttk.Frame):
             label=MENU_ITEM_PRE_COMMENT, accelerator="P",
             command=self.on_pre_comment)
         root.bind("<p>", lambda _e: menu_annotate.invoke(MENU_ITEM_PRE_COMMENT))
+        menu_annotate.add_command(
+            label=MENU_ITEM_LABEL, accelerator="L",
+            command=self.on_label)
+        root.bind("<l>", lambda _e: menu_annotate.invoke(MENU_ITEM_LABEL))
         app.menu_bar.add_cascade(label=MENU_ANNOTATE, menu=menu_annotate)
 
         self.dasm = dasm = ttk.Treeview(self)
@@ -119,6 +124,7 @@ class DisassemblyView(ttk.Frame):
         menu_bar.entryconfig(MENU_ANNOTATE, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_INLINE_COMMENT, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_PRE_COMMENT, state="disabled")
+        menu_annotate.entryconfig(MENU_ITEM_LABEL, state="disabled")
 
     def handle_project_loaded(self, *args):
         print(events.PROJECT_LOADED + " dasmview")
@@ -163,19 +169,29 @@ class DisassemblyView(ttk.Frame):
             follow_state = "normal"
         self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state=follow_state)
 
-        # Can we add/edit comments?
+        # Can we add/edit comments and labels?
         if item.kind == "disassembly":
-            comment_state = "normal"
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_INLINE_COMMENT, state="normal")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_PRE_COMMENT, state="normal")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_LABEL, state="normal")
         else:
-            comment_state = "disabled"
-        self.menu_annotate.entryconfig(
-            MENU_ITEM_INLINE_COMMENT, state=comment_state)
-        self.menu_annotate.entryconfig(
-            MENU_ITEM_PRE_COMMENT, state=comment_state)
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_INLINE_COMMENT, state="disabled")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_PRE_COMMENT, state="disabled")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_LABEL, state="disabled")
 
         if item.kind == "pre-comment":
             self.menu_annotate.entryconfig(
                 MENU_ITEM_PRE_COMMENT, state="normal")
+
+        if item.kind == "label":
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_LABEL, state="normal")
 
     def handle_analysis_updated(self, *args):
         print(events.ANALYSIS_UPDATED + " dasmview")
@@ -264,7 +280,7 @@ class DisassemblyView(ttk.Frame):
     def on_pre_comment(self, *args):
         selected_id, display_index, orig_index, item = self.get_selected()
         assert item.kind in ("disassembly", "pre-comment")
-        address = address = item.operation.addr
+        address = item.operation.addr
         old_comment = None
 
         if item.kind == "disassembly":
@@ -310,6 +326,31 @@ class DisassemblyView(ttk.Frame):
                     address, new_comment)
 
         if refresh:
+            self.app.session.refresh_analysis()
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def on_label(self, *args):
+        selected_id, display_index, orig_index, item = self.get_selected()
+        assert item.kind in ("disassembly", "label")
+        address = item.operation.addr
+
+        def get_labels_fn():
+            return self.app.session.current_analysis.get_labels_for(address)
+
+        def add_fn(label):
+            self.app.session.apply_new_label(address, label)
+
+        def remove_fn(label):
+            self.app.session.remove_label(address, label)
+
+        label_dialog = dsnes.ui.LabelDialog(
+            title="dSNES", prompt="Labels:",
+            get_labels_fn=get_labels_fn,
+            validate_fn=self.app.session.can_create_new_label,
+            add_fn=add_fn,
+            remove_fn=remove_fn,
+            parent=self.app.root)
+        if label_dialog.made_changes:
             self.app.session.refresh_analysis()
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
 

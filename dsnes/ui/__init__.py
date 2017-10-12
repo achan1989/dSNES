@@ -1,2 +1,2 @@
 from .disassemblyview import DisassemblyView
-from .textdialog import TextDialog
+from .dialog import TextDialog, LabelDialog
