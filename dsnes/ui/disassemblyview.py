@@ -378,6 +378,7 @@ class DisassemblyView(ttk.Frame):
         except dsnes.interactive.NoOperation:
             pass
         else:
+            self.app.session.refresh_analysis()
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def add_item(self, item, orig_index, is_selected):
