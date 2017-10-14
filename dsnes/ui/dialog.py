@@ -2,7 +2,7 @@
 # Licensed under GPLv3
 
 import tkinter as tk
-from tkinter import simpledialog
+from tkinter import simpledialog, messagebox
 from tkinter import ttk
 
 class ResizeDialog(simpledialog.Dialog):
@@ -100,6 +100,35 @@ class TextDialog(ResizeDialog):
         return 1
 
 
+class QueryStringValidated(simpledialog._QueryString):
+    def __init__(self, title, prompt, validate_fn, parent=None, **kwargs):
+        self.validate_fn = validate_fn
+        super().__init__(title, prompt, parent=parent, **kwargs)
+
+    def validate(self):
+        try:
+            result = self.getresult()
+        except ValueError:
+            messagebox.showwarning(
+                "Illegal value",
+                self.errormessage + "\nPlease try again",
+                parent = self
+            )
+            return 0
+
+        valid, fail_msg = self.validate_fn(result)
+        if not valid:
+            messagebox.showwarning(
+                "Invalid label",
+                fail_msg,
+                parent = self
+            )
+            return 0
+
+        self.result = result
+        return 1
+
+
 class LabelDialog(ResizeDialog):
     """Dialog for modifying a line's labels."""
     def __init__(self, title, prompt, get_labels_fn, validate_fn, add_fn,
@@ -160,7 +189,14 @@ class LabelDialog(ResizeDialog):
         self.label_listbox["height"] = height
 
     def on_add(self, *args):
-        print("TODO on add")
+        label_dialog = QueryStringValidated(
+            title="dSNES", prompt="New label:", validate_fn=self.validate_fn)
+        new_label = label_dialog.result
+
+        if new_label is not None:
+            self.add_fn(new_label)
+            self.made_changes = True
+            self.update_list()
 
     def on_remove(self, *args):
         selected = self.label_listbox.curselection()

@@ -130,12 +130,23 @@ class Session:
 
     def can_create_new_label(self, text):
         """Check if a given label can be created."""
-        return text not in self.project.database.get_all_labels()
+        if not text:
+            return False, "Label cannot be empty"
+
+        fail_msg = None
+        valid = text not in self.project.database.get_all_labels()
+        if not valid:
+            fail_msg = "That label is already used somewhere else"
+        return valid, fail_msg
 
     def apply_new_label(self, addr, text):
         """Apply a label to an address."""
+        if addr < 0 or addr > 0xFFFFFF:
+            raise ValueError("Address 0x{:06x} is out of range".format(addr))
         self.project.database.add_label(addr, text)
 
     def remove_label(self, addr, text):
         """Remove the label from an address."""
+        if addr < 0 or addr > 0xFFFFFF:
+            raise ValueError("Address 0x{:06x} is out of range".format(addr))
         self.project.database.remove_label(addr, text)

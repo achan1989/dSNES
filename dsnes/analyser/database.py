@@ -95,7 +95,32 @@ class Database:
         """Add a label to an address."""
         if label in self.get_all_labels():
             raise ValueError("Label {!r} is already in use".format(label))
-        TODO
+        key = encode_address_key(addr)
+        self._register_label(addr, label)
+
+        labels = self.data["labels"]
+        try:
+            lst = labels[key]
+        except LookupError:
+            lst = []
+            labels[key] = lst
+        lst.append(label)
+        self.is_dirty = True
+
+    def _register_label(self, addr, label):
+        """Register the label in the internal lookups."""
+        if label in self.address_of_label:
+            raise ValueError(
+                "Label {!r} has already been used for 0x{:06x}".format(
+                    label, self.address_of_label[label]))
+        self.address_of_label[label] = addr
+
+        if addr not in self.labels_of_address:
+            self.labels_of_address[addr] = [label]
+        else:
+            lst = self.labels_of_address[addr]
+            assert label not in lst
+            lst.append(label)
 
     def remove_label(self, addr, label):
         """Remove a label from an address."""
@@ -183,17 +208,7 @@ class Database:
         for key, labels in self.data["labels"].items():
             addr = parse_address_key(key)
             for label in labels:
-                if label in self.address_of_label:
-                    raise ValueError(
-                        "Label {!r} has already been used for 0x{:06x}".format(
-                            label, self.address_of_label[label]))
-                self.address_of_label[label] = addr
-
-                if addr not in self.labels_of_address:
-                    self.labels_of_address[addr] = [label]
-                else:
-                    lst = self.labels_of_address[addr]
-                    lst.append(label)
+                self._register_label(addr, label)
 
     def save(self):
         path = self.path
