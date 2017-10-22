@@ -1,2 +1,2 @@
 from .disassemblyview import DisassemblyView
-from .dialog import TextDialog, LabelDialog
+from .dialog import TextDialog, LabelDialog, QueryStringValidated

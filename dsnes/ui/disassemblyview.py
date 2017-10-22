@@ -18,6 +18,7 @@ MENU_ANNOTATE = "Annotate"
 MENU_ITEM_INLINE_COMMENT = "Inline comment"
 MENU_ITEM_PRE_COMMENT = "Pre-comment"
 MENU_ITEM_LABEL = "Label"
+MENU_ITEM_STATE = "State"
 
 
 class DisassemblyView(ttk.Frame):
@@ -61,6 +62,10 @@ class DisassemblyView(ttk.Frame):
             label=MENU_ITEM_LABEL, accelerator="L",
             command=self.on_label)
         root.bind("<l>", lambda _e: menu_annotate.invoke(MENU_ITEM_LABEL))
+        menu_annotate.add_command(
+            label=MENU_ITEM_STATE, accelerator="S",
+            command=self.on_state)
+        root.bind("<s>", lambda _e: menu_annotate.invoke(MENU_ITEM_STATE))
         app.menu_bar.add_cascade(label=MENU_ANNOTATE, menu=menu_annotate)
 
         self.dasm = dasm = ttk.Treeview(self)
@@ -125,6 +130,7 @@ class DisassemblyView(ttk.Frame):
         menu_annotate.entryconfig(MENU_ITEM_INLINE_COMMENT, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_PRE_COMMENT, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_LABEL, state="disabled")
+        menu_annotate.entryconfig(MENU_ITEM_STATE, state="disabled")
 
     def handle_project_loaded(self, *args):
         print(events.PROJECT_LOADED + " dasmview")
@@ -169,7 +175,7 @@ class DisassemblyView(ttk.Frame):
             follow_state = "normal"
         self.menu_search.entryconfig(MENU_ITEM_FOLLOW, state=follow_state)
 
-        # Can we add/edit comments and labels?
+        # What kinds of things can we annotate?
         if item.kind == "disassembly":
             self.menu_annotate.entryconfig(
                 MENU_ITEM_INLINE_COMMENT, state="normal")
@@ -177,6 +183,8 @@ class DisassemblyView(ttk.Frame):
                 MENU_ITEM_PRE_COMMENT, state="normal")
             self.menu_annotate.entryconfig(
                 MENU_ITEM_LABEL, state="normal")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_STATE, state="normal")
         else:
             self.menu_annotate.entryconfig(
                 MENU_ITEM_INLINE_COMMENT, state="disabled")
@@ -184,6 +192,8 @@ class DisassemblyView(ttk.Frame):
                 MENU_ITEM_PRE_COMMENT, state="disabled")
             self.menu_annotate.entryconfig(
                 MENU_ITEM_LABEL, state="disabled")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_STATE, state="disabled")
 
         if item.kind == "pre-comment":
             self.menu_annotate.entryconfig(
@@ -351,6 +361,45 @@ class DisassemblyView(ttk.Frame):
             remove_fn=remove_fn,
             parent=self.app.root)
         if label_dialog.made_changes:
+            self.app.session.refresh_analysis()
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def on_state(self, *args):
+        selected_id, display_index, orig_index, item = self.get_selected()
+        assert item.kind == "disassembly"
+        address = item.operation.addr
+
+        database = self.app.session.project.database
+        old_state = database.get_state(address)
+        if old_state:
+            old_state = old_state.encode()
+
+        def validate_fn(text):
+            if text == "":
+                return True, None
+            else:
+                return self.app.session.is_valid_state(text)
+
+        new_state = dsnes.ui.QueryStringValidated(
+            title="dSNES",
+            prompt="Absolute state (empty to delete, "
+                   "'unknown' to set unknown):",
+            initialvalue=old_state, validate_fn=validate_fn).result
+
+        refresh = True
+        if new_state is None:
+            # Pressed cancel. Do nothing.
+            refresh = False
+        elif new_state == "":
+            # Delete the state.
+            try:
+                self.app.session.remove_state(address)
+            except LookupError:
+                refresh = False
+        else:
+            self.app.session.set_state(address, new_state)
+
+        if refresh:
             self.app.session.refresh_analysis()
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
 

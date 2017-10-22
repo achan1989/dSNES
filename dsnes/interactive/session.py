@@ -150,3 +150,27 @@ class Session:
         if addr < 0 or addr > 0xFFFFFF:
             raise ValueError("Address 0x{:06x} is out of range".format(addr))
         self.project.database.remove_label(addr, text)
+
+    def is_valid_state(self, text):
+        """Check if something is a valid state string."""
+        try:
+            dsnes.State.parse(text)
+            valid = True
+            fail_msg = None
+        except Exception as ex:
+            valid = False
+            fail_msg = str(ex)
+        return valid, fail_msg
+
+    def set_state(self, addr, text):
+        """Set the state at an address."""
+        if addr < 0 or addr > 0xFFFFFF:
+            raise ValueError("Address 0x{:06x} is out of range".format(addr))
+        state = dsnes.State.parse(text)
+        self.project.database.set_state(addr, state)
+
+    def remove_state(self, addr):
+        """Remove the state from an address."""
+        if addr < 0 or addr > 0xFFFFFF:
+            raise ValueError("Address 0x{:06x} is out of range".format(addr))
+        self.project.database.remove_state(addr)

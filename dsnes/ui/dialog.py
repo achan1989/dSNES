@@ -101,6 +101,7 @@ class TextDialog(ResizeDialog):
 
 
 class QueryStringValidated(simpledialog._QueryString):
+    """Like simpledialog._QueryString, but with custom validation."""
     def __init__(self, title, prompt, validate_fn, parent=None, **kwargs):
         self.validate_fn = validate_fn
         super().__init__(title, prompt, parent=parent, **kwargs)
@@ -119,7 +120,7 @@ class QueryStringValidated(simpledialog._QueryString):
         valid, fail_msg = self.validate_fn(result)
         if not valid:
             messagebox.showwarning(
-                "Invalid label",
+                "Invalid value",
                 fail_msg,
                 parent = self
             )
