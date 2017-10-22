@@ -77,6 +77,12 @@ class Database:
         self.data["state_deltas"][key] = s
         self.is_dirty = True
 
+    def remove_state_delta(self, addr):
+        key = encode_address_key(addr)
+        del self.state_delta_cache[addr]
+        del self.data["state_deltas"][key]
+        self.is_dirty = True
+
     def get_label(self, addr):
         """Get the first label for a given address."""
         labels = self.labels_of_address.get(addr, [])

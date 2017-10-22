@@ -174,3 +174,27 @@ class Session:
         if addr < 0 or addr > 0xFFFFFF:
             raise ValueError("Address 0x{:06x} is out of range".format(addr))
         self.project.database.remove_state(addr)
+
+    def is_valid_state_delta(self, text):
+        """Check is something is a valid state delta string."""
+        try:
+            dsnes.StateDelta.parse(text)
+            valid = True
+            fail_msg = None
+        except Exception as ex:
+            valid = False
+            fail_msg = str(ex)
+        return valid, fail_msg
+
+    def set_state_delta(self, addr, text):
+        """Set the state delta at an address."""
+        if addr < 0 or addr > 0xFFFFFF:
+            raise ValueError("Address 0x{:06x} is out of range".format(addr))
+        delta = dsnes.StateDelta.parse(text)
+        self.project.database.set_state_delta(addr, delta)
+
+    def remove_state_delta(self, addr):
+        """Remove the state delta from an address."""
+        if addr < 0 or addr > 0xFFFFFF:
+            raise ValueError("Address 0x{:06x} is out of range".format(addr))
+        self.project.database.remove_state_delta(addr)

@@ -3,7 +3,7 @@
 
 import tkinter as tk
 from tkinter import font as tkfont
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 import dsnes
 from dsnes.ui import events
@@ -19,6 +19,7 @@ MENU_ITEM_INLINE_COMMENT = "Inline comment"
 MENU_ITEM_PRE_COMMENT = "Pre-comment"
 MENU_ITEM_LABEL = "Label"
 MENU_ITEM_STATE = "State"
+MENU_ITEM_STATE_DELTA = "State delta"
 
 
 class DisassemblyView(ttk.Frame):
@@ -66,6 +67,10 @@ class DisassemblyView(ttk.Frame):
             label=MENU_ITEM_STATE, accelerator="S",
             command=self.on_state)
         root.bind("<s>", lambda _e: menu_annotate.invoke(MENU_ITEM_STATE))
+        menu_annotate.add_command(
+            label=MENU_ITEM_STATE_DELTA, accelerator="D",
+            command=self.on_state_delta)
+        root.bind("<d>", lambda _e: menu_annotate.invoke(MENU_ITEM_STATE_DELTA))
         app.menu_bar.add_cascade(label=MENU_ANNOTATE, menu=menu_annotate)
 
         self.dasm = dasm = ttk.Treeview(self)
@@ -131,6 +136,7 @@ class DisassemblyView(ttk.Frame):
         menu_annotate.entryconfig(MENU_ITEM_PRE_COMMENT, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_LABEL, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_STATE, state="disabled")
+        menu_annotate.entryconfig(MENU_ITEM_STATE_DELTA, state="disabled")
 
     def handle_project_loaded(self, *args):
         print(events.PROJECT_LOADED + " dasmview")
@@ -185,6 +191,8 @@ class DisassemblyView(ttk.Frame):
                 MENU_ITEM_LABEL, state="normal")
             self.menu_annotate.entryconfig(
                 MENU_ITEM_STATE, state="normal")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_STATE_DELTA, state="normal")
         else:
             self.menu_annotate.entryconfig(
                 MENU_ITEM_INLINE_COMMENT, state="disabled")
@@ -194,6 +202,8 @@ class DisassemblyView(ttk.Frame):
                 MENU_ITEM_LABEL, state="disabled")
             self.menu_annotate.entryconfig(
                 MENU_ITEM_STATE, state="disabled")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_STATE_DELTA, state="disabled")
 
         if item.kind == "pre-comment":
             self.menu_annotate.entryconfig(
@@ -370,6 +380,13 @@ class DisassemblyView(ttk.Frame):
         address = item.operation.addr
 
         database = self.app.session.project.database
+        state_delta = database.get_state_delta(address)
+        if state_delta:
+            messagebox.showerror(
+                title="dSNES",
+                message="Cannot set both an absolute and a delta state for "
+                "the same address.")
+            return
         old_state = database.get_state(address)
         if old_state:
             old_state = old_state.encode()
@@ -398,6 +415,51 @@ class DisassemblyView(ttk.Frame):
                 refresh = False
         else:
             self.app.session.set_state(address, new_state)
+
+        if refresh:
+            self.app.session.refresh_analysis()
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def on_state_delta(self, *args):
+        selected_id, display_index, orig_index, item = self.get_selected()
+        assert item.kind == "disassembly"
+        address = item.operation.addr
+
+        database = self.app.session.project.database
+        state_abs = database.get_state(address)
+        if state_abs:
+            messagebox.showerror(
+                title="dSNES",
+                message="Cannot set both an absolute and a delta state for "
+                "the same address.")
+            return
+        old_delta = database.get_state_delta(address)
+        if old_delta:
+            old_delta = old_delta.encode()
+
+        def validate_fn(text):
+            if text == "":
+                return True, None
+            else:
+                return self.app.session.is_valid_state_delta(text)
+
+        new_delta = dsnes.ui.QueryStringValidated(
+            title="dSNES",
+            prompt="State delta (+-emxc b=n d=n):",
+            initialvalue=old_delta, validate_fn=validate_fn).result
+
+        refresh = True
+        if new_delta is None:
+            # Pressed cancel. Do nothing.
+            refresh = False
+        elif new_delta == "":
+            # Delete the state delta.
+            try:
+                self.app.session.remove_state_delta(address)
+            except LookupError:
+                refresh = False
+        else:
+            self.app.session.set_state_delta(address, new_delta)
 
         if refresh:
             self.app.session.refresh_analysis()
