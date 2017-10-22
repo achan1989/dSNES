@@ -65,7 +65,10 @@ class Database:
 
     def get_state_delta(self, addr):
         delta = self.state_delta_cache.get(addr, None)
-        return delta
+        if delta:
+            return delta.clone()
+        else:
+            return None
 
     def set_state_delta(self, addr, delta):
         key = encode_address_key(addr)
@@ -94,12 +97,12 @@ class Database:
     def get_labels(self, addr):
         """Get all labels for a given address."""
         labels = self.labels_of_address.get(addr, [])
-        return labels
+        return labels[:]
 
     def get_all_labels(self):
         """Get all labels in use."""
         labels = [x for x in self.address_of_label.keys()]
-        return labels
+        return labels[:]
 
     def get_address_with_label(self, label):
         """Get the address that the label applies to."""

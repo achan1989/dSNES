@@ -175,6 +175,11 @@ class StateDelta:
         self.to_add = to_add
         self.to_clear = to_clear
 
+    def clone(self):
+        cls = self.__class__
+        return cls(
+            to_add=self.to_add[:], to_clear=self.to_clear[:])
+
     def apply(self, state):
         state = state.clone()
         for var, value in self.to_add:
