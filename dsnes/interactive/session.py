@@ -198,3 +198,16 @@ class Session:
         if addr < 0 or addr > 0xFFFFFF:
             raise ValueError("Address 0x{:06x} is out of range".format(addr))
         self.project.database.remove_state_delta(addr)
+
+    def get_hardware_label(self, addr):
+        """Get a hardware label for the given address.
+
+        Horrible hack that duplicates functionality in
+        analyser.get_labels_for().
+        May return None.
+        """
+        try:
+            hw_label = self.project.bus.get_label(addr)
+        except dsnes.UnmappedMemoryAccess:
+            hw_label = "UNMAPPED_{:06x}".format(addr)
+        return hw_label

@@ -17,7 +17,8 @@ MENU_ITEM_RETURN = "Undo follow"
 MENU_ANNOTATE = "Annotate"
 MENU_ITEM_INLINE_COMMENT = "Inline comment"
 MENU_ITEM_PRE_COMMENT = "Pre-comment"
-MENU_ITEM_LABEL = "Label"
+MENU_ITEM_LABEL = "Label instruction"
+MENU_ITEM_LABEL_TARGET = "Label target"
 MENU_ITEM_STATE = "State"
 MENU_ITEM_STATE_DELTA = "State delta"
 
@@ -63,6 +64,11 @@ class DisassemblyView(ttk.Frame):
             label=MENU_ITEM_LABEL, accelerator="L",
             command=self.on_label)
         root.bind("<l>", lambda _e: menu_annotate.invoke(MENU_ITEM_LABEL))
+        menu_annotate.add_command(
+            label=MENU_ITEM_LABEL_TARGET, accelerator="T",
+            command=self.on_label_target)
+        root.bind("<t>",
+            lambda _e: menu_annotate.invoke(MENU_ITEM_LABEL_TARGET))
         menu_annotate.add_command(
             label=MENU_ITEM_STATE, accelerator="S",
             command=self.on_state)
@@ -135,6 +141,7 @@ class DisassemblyView(ttk.Frame):
         menu_annotate.entryconfig(MENU_ITEM_INLINE_COMMENT, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_PRE_COMMENT, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_LABEL, state="disabled")
+        menu_annotate.entryconfig(MENU_ITEM_LABEL_TARGET, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_STATE, state="disabled")
         menu_annotate.entryconfig(MENU_ITEM_STATE_DELTA, state="disabled")
 
@@ -169,9 +176,6 @@ class DisassemblyView(ttk.Frame):
         self.dasm.focus_set()
         self.dasm.focus(selected_id)
         self.dasm.see(selected_id)
-        print(
-            "<<TreeviewSelect>> id={}, display_index={}, orig_index={}".format(
-                selected_id, display_index, orig_index))
 
         # Can we follow a jump/call?
         calls = self.app.session.get_calls_from_line(orig_index)
@@ -204,6 +208,25 @@ class DisassemblyView(ttk.Frame):
                 MENU_ITEM_STATE, state="disabled")
             self.menu_annotate.entryconfig(
                 MENU_ITEM_STATE_DELTA, state="disabled")
+
+        # Can we label the target of this instruction?
+        # TODO: put this logic somewhere else.
+        disable_label_target = True
+        if item.kind == "disassembly":
+            target_info = item.operation.target_info
+            next_addr_action = item.operation.next_addr[0]
+            if (target_info.addr is not None
+                    and next_addr_action in (
+                        dsnes.NextAction.step,
+                        dsnes.NextAction.jump,
+                        dsnes.NextAction.call,
+                        dsnes.NextAction.branch)):
+                self.menu_annotate.entryconfig(
+                    MENU_ITEM_LABEL_TARGET, state="normal")
+                disable_label_target = False
+        if disable_label_target:
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_LABEL_TARGET, state="disabled")
 
         if item.kind == "pre-comment":
             self.menu_annotate.entryconfig(
@@ -365,6 +388,48 @@ class DisassemblyView(ttk.Frame):
 
         label_dialog = dsnes.ui.LabelDialog(
             title="dSNES", prompt="Labels:",
+            get_labels_fn=get_labels_fn,
+            validate_fn=self.app.session.can_create_new_label,
+            add_fn=add_fn,
+            remove_fn=remove_fn,
+            parent=self.app.root)
+        if label_dialog.made_changes:
+            self.app.session.refresh_analysis()
+            self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def on_label_target(self, *args):
+        selected_id, display_index, orig_index, item = self.get_selected()
+        assert item.kind == "disassembly"
+
+        target_info = item.operation.target_info
+        next_addr_action = item.operation.next_addr[0]
+        assert target_info.addr is not None
+        assert next_addr_action in (
+            dsnes.NextAction.step,
+            dsnes.NextAction.jump,
+            dsnes.NextAction.call,
+            dsnes.NextAction.branch)
+        address = target_info.addr
+
+        def get_labels_fn():
+            return self.app.session.current_analysis.get_labels_for(address)
+
+        def add_fn(label):
+            self.app.session.apply_new_label(address, label)
+
+        def remove_fn(label):
+            # Ugly hack to prevent user from trying to remove a hardware label.
+            hw_label = self.app.session.get_hardware_label(address)
+            if label == hw_label:
+                messagebox.showerror(
+                    title="dSNES",
+                    message="Cannot remove this label, it is a property of "
+                    "the hardware")
+            else:
+                self.app.session.remove_label(address, label)
+
+        label_dialog = dsnes.ui.LabelDialog(
+            title="dSNES", prompt="Target labels:",
             get_labels_fn=get_labels_fn,
             validate_fn=self.app.session.can_create_new_label,
             add_fn=add_fn,
