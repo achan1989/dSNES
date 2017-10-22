@@ -49,13 +49,15 @@ class Database:
     def set_state(self, addr, state):
         key = encode_address_key(addr)
         s = state.encode()
-        if s is None and addr in self.state_cache:
-            # State is set to all unknown, so delete the entry.
-            del self.state_cache[addr]
-            del self.data["states"][key]
-        else:
-            self.state_cache[addr] = state.clone()
-            self.data["states"][key] = s
+        assert s is not None
+        self.state_cache[addr] = state.clone()
+        self.data["states"][key] = s
+        self.is_dirty = True
+
+    def remove_state(self, addr):
+        key = encode_address_key(addr)
+        del self.state_cache[addr]
+        del self.data["states"][key]
         self.is_dirty = True
 
     def get_state_delta(self, addr):

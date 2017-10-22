@@ -96,7 +96,7 @@ class State:
         if any(parts):
             return " ".join(parts)
         else:
-            return None
+            return "unknown"
 
     @classmethod
     def parse(cls, s):
@@ -112,6 +112,9 @@ class State:
             "C": {"c": True}
         }
 
+        if s == "unknown":
+            return cls()
+
         parts = s.split(" ")
         for part in parts:
             kind = part[:2]
@@ -122,7 +125,7 @@ class State:
                         kwargs.update(p_lookup[letter])
                 except LookupError:
                     raise ValueError(
-                        "'{}' is not a valid CPU flags encoding".format(data))
+                        "{!r} is not a valid CPU flags encoding".format(data))
 
             elif kind == "b=":
                 b = int(data, base=16)
@@ -132,17 +135,18 @@ class State:
                 d = int(data, base=16)
                 kwargs["d"] = d
 
+            elif kind == "":
+                continue
+
             else:
                 raise ValueError(
-                    "'{}' is not a valid CPU state encoding".format(s))
+                    "{!r} is not a valid CPU state encoding".format(s))
 
         if kwargs:
             return cls(**kwargs)
         else:
-            if s:
-                raise ValueError(
-                    "'{}' is not a valid CPU state encoding".format(s))
-            return None
+            raise ValueError(
+                "{!r} is not a valid CPU state encoding".format(s))
 
     def __repr__(self):
         code = self.encode()

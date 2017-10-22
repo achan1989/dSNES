@@ -5,6 +5,13 @@ import pytest
 
 from dsnes import State
 
+def test_unknown():
+    s = "unknown"
+    state = State.parse(s)
+    for var in ("e", "m", "x", "c", "b", "d"):
+        assert getattr(state, var) is None
+    assert state.encode() == s
+
 def test_simple_1():
     s = "p=e"
     state = State.parse(s)
@@ -52,6 +59,8 @@ def test_combined_2():
     assert state.encode() == "p=mC b=f d=10"
 
 def test_bad():
+    with pytest.raises(ValueError):
+        State.parse("")
     with pytest.raises(ValueError):
         State.parse("p=Mx v")
     with pytest.raises(ValueError):
