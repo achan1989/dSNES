@@ -1073,12 +1073,14 @@ class BranchAlwaysLong(InstructionType):
         return (NextAction.jump, target)
 
 class Interrupt(InstructionType):
-    def next_instruction_addr(self, addr, state, op0, op1, op2):
-        """Get the PBR:PC value for the next instruction."""
-        # Most instructions can't cross bank boundaries. If the PC increments
-        # past 0xFFFF it rolls over to 0x0000 without changing PBR.
-        assert self.nbytes is not None
-        raise NotImplementedError("Interrupt")
+    nbytes = 2
+
+    def asm_str(self, addr, state, op0, op1, op2):
+        # Optional signature byte follows the BRK opcode?
+        return "{} ${:02x}?".format(self.mnemonic, op0)
+
+    def target_info(self, addr, state, op0, op1, op2):
+        return NULL_TARGET_INFO
 
 class RFU(Implied):
     """Reserved for future use."""
