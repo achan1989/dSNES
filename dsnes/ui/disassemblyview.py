@@ -236,6 +236,13 @@ class DisassemblyView(ttk.Frame):
             self.menu_annotate.entryconfig(
                 MENU_ITEM_LABEL, state="normal")
 
+        # Allow state annotations on analyser errors.
+        if item.kind == "error":
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_STATE, state="normal")
+            self.menu_annotate.entryconfig(
+                MENU_ITEM_STATE_DELTA, state="normal")
+
     def handle_analysis_updated(self, *args):
         print(events.ANALYSIS_UPDATED + " dasmview")
         dasm = self.dasm
@@ -441,8 +448,11 @@ class DisassemblyView(ttk.Frame):
 
     def on_state(self, *args):
         selected_id, display_index, orig_index, item = self.get_selected()
-        assert item.kind == "disassembly"
-        address = item.operation.addr
+        assert item.kind in ("disassembly", "error")
+        if item.kind == "disassembly":
+            address = item.operation.addr
+        else:
+            address = item.addr
 
         database = self.app.session.project.database
         state_delta = database.get_state_delta(address)
@@ -487,8 +497,11 @@ class DisassemblyView(ttk.Frame):
 
     def on_state_delta(self, *args):
         selected_id, display_index, orig_index, item = self.get_selected()
-        assert item.kind == "disassembly"
-        address = item.operation.addr
+        assert item.kind in ("disassembly", "error")
+        if item.kind == "disassembly":
+            address = item.operation.addr
+        else:
+            address = item.addr
 
         database = self.app.session.project.database
         state_abs = database.get_state(address)
