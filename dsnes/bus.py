@@ -146,7 +146,8 @@ def make_mirror_fn(size):
     return mirror_fn
 
 def default_read_fn(addr):
-    raise TypeError("No read function for memory at 0x{:x}".format(addr))
+    raise dsnes.BusReadImpossible(
+        "No read function for memory at 0x{:x}".format(addr))
 
 def default_label_fn(addr):
     return None

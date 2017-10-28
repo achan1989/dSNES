@@ -113,7 +113,8 @@ class Analyser:
                             mnemonic=ex.mnemonic, thing=ex.requires))
                     self.operations.append(error)
                     break
-                except dsnes.InvalidDisassembly as ex:
+                except (dsnes.InvalidDisassembly,
+                        dsnes.BusReadImpossible) as ex:
                     error = AnalyserError(
                         address, self.state, str(ex))
                     self.operations.append(error)

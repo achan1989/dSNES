@@ -22,3 +22,6 @@ class AmbiguousDisassembly(Exception):
 
 class InvalidDisassembly(Exception):
     pass
+
+class BusReadImpossible(Exception):
+    pass
