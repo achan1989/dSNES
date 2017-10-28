@@ -226,7 +226,7 @@ class AbsLong(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "AbsLong address mode only available in native mode")
         return "{} ${:06x}".format(self.mnemonic, op24)
 
@@ -248,7 +248,7 @@ class AbsLongX(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op24 = op0 | (op1 << 8) | (op2 << 16)
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "AbsLongX address mode only available in native mode")
         return "{} ${:06x},x".format(self.mnemonic, op24)
 
@@ -463,7 +463,8 @@ class DPInd(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         if state.e is not False:
-            raise ValueError("DPInd address mode only available in native mode")
+            raise dsnes.InvalidDisassembly(
+                "DPInd address mode only available in native mode")
         return "{} (${:02x})".format(self.mnemonic, op8)
 
     def target_info(self, addr, state, op0, op1, op2):
@@ -495,7 +496,7 @@ class DPIndLong(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "DPIndLong address mode only available in native mode")
         return "{} [${:02x}]".format(self.mnemonic, op8)
 
@@ -560,7 +561,7 @@ class DPIndLongY(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "DPIndLongY address mode only available in native mode")
         return "{} [${:02x}],y".format(
             self.mnemonic, op8, op8)
@@ -627,7 +628,7 @@ class BlockMove(InstructionType):
 
     def asm_str(self, addr, state, op0, op1, op2):
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "BlockMove address mode only available in native mode")
         return "{} ${:02x},${:02x}".format(self.mnemonic, op1, op0)
         # TODO: could put additional info into this dasm.
@@ -656,7 +657,7 @@ class StackRelative(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "StackRelative address mode only available in native mode")
         return "{} ${:02x},s".format(
             self.mnemonic, op8, op8)
@@ -676,7 +677,7 @@ class StackRelativeIndY(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op8 = op0
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "StackRelativeIndY address mode only available in native mode")
         return "{} (${:02x},s),y".format(self.mnemonic, op8)
 
@@ -902,7 +903,7 @@ class JumpAbsIndLong(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "JumpAbsIndLong address mode only available in native mode")
         return "{} [${:04x}]".format(self.mnemonic, op16)
 
@@ -1047,7 +1048,7 @@ class BranchAlwaysLong(InstructionType):
     def asm_str(self, addr, state, op0, op1, op2):
         op16 = op0 | (op1 << 8)
         if state.e is not False:
-            raise ValueError(
+            raise dsnes.InvalidDisassembly(
                 "BranchAlwaysLong address mode only available in native mode")
         target = self.calc_target(addr, op16)
         return "{} ${:04x}".format(self.mnemonic, target & 0xFFFF)

@@ -19,3 +19,6 @@ class AmbiguousDisassembly(Exception):
         super().__init__(mnemonic, requires)
         self.mnemonic = mnemonic
         self.requires = requires
+
+class InvalidDisassembly(Exception):
+    pass
