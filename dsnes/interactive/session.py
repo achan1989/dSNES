@@ -211,3 +211,28 @@ class Session:
         except dsnes.UnmappedMemoryAccess:
             hw_label = "UNMAPPED_{:06x}".format(addr)
         return hw_label
+
+    def get_address_of_interrupt_handler(self, emulation, kind):
+        emulation_vectors = {
+            "IRQ": 0xfffe,
+            "Reset": 0xfffc,
+            "NMI": 0xfffa,
+            "Abort": 0xfff8,
+            "COP": 0xfff4
+        }
+        native_vectors = {
+            "IRQ": 0xffee,
+            "NMI": 0xffea,
+            "Abort": 0xffe8,
+            "BRK": 0xffe6,
+            "COP": 0xffe4
+        }
+
+        if emulation:
+            vector = emulation_vectors[kind]
+        else:
+            vector = native_vectors[kind]
+        lo = self.project.bus.read(vector)
+        hi = self.project.bus.read(vector+1)
+        handler = (hi << 8) + lo
+        return handler

@@ -1,6 +1,8 @@
 # Copyright 2017 Adrian Chan
 # Licensed under GPLv3
 
+from functools import partial
+
 import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk, messagebox
@@ -13,6 +15,16 @@ MENU_SEARCH = "Search"
 MENU_ITEM_GOTO = "Goto..."
 MENU_ITEM_FOLLOW = "Follow jump/call"
 MENU_ITEM_RETURN = "Undo follow"
+
+SUBMENU_INTERRUPTS = "Interrupts"
+SUBMENU_EMU_INT = "Emulation"
+SUBMENU_NAT_INT = "Native"
+MENU_ITEM_EMU_IRQ = MENU_ITEM_NAT_IRQ = "IRQ"
+MENU_ITEM_EMU_RESET = "Reset"
+MENU_ITEM_EMU_NMI = MENU_ITEM_NAT_NMI = "NMI"
+MENU_ITEM_EMU_ABORT = MENU_ITEM_NAT_ABORT = "Abort"
+MENU_ITEM_NAT_BRK = "BRK"
+MENU_ITEM_EMU_COP = MENU_ITEM_NAT_COP = "COP"
 
 MENU_ANNOTATE = "Annotate"
 MENU_ITEM_INLINE_COMMENT = "Inline comment"
@@ -49,6 +61,46 @@ class DisassemblyView(ttk.Frame):
             command=self.on_goto)
         root.bind("<Control-g>", lambda _e: menu_search.invoke(MENU_ITEM_GOTO))
         app.menu_bar.add_cascade(label=MENU_SEARCH, menu=menu_search)
+
+        self.submenu_interrupts = submenu_interrupts = tk.Menu(menu_search)
+        menu_search.add_cascade(
+            label=SUBMENU_INTERRUPTS, menu=submenu_interrupts)
+        self.submenu_emu_int = submenu_emu_int = tk.Menu(submenu_interrupts)
+        submenu_interrupts.add_cascade(
+            label=SUBMENU_EMU_INT, menu=submenu_emu_int)
+        submenu_emu_int.add_command(
+            label=MENU_ITEM_EMU_IRQ,
+            command=partial(self.on_interrupt_emu, MENU_ITEM_EMU_IRQ))
+        submenu_emu_int.add_command(
+            label=MENU_ITEM_EMU_RESET,
+            command=partial(self.on_interrupt_emu, MENU_ITEM_EMU_RESET))
+        submenu_emu_int.add_command(
+            label=MENU_ITEM_EMU_NMI,
+            command=partial(self.on_interrupt_emu, MENU_ITEM_EMU_NMI))
+        submenu_emu_int.add_command(
+            label=MENU_ITEM_EMU_ABORT,
+            command=partial(self.on_interrupt_emu, MENU_ITEM_EMU_ABORT))
+        submenu_emu_int.add_command(
+            label=MENU_ITEM_EMU_COP,
+            command=partial(self.on_interrupt_emu, MENU_ITEM_EMU_COP))
+        self.submenu_nat_int = submenu_nat_int = tk.Menu(submenu_interrupts)
+        submenu_interrupts.add_cascade(
+            label=SUBMENU_NAT_INT, menu=submenu_nat_int)
+        submenu_nat_int.add_command(
+            label=MENU_ITEM_NAT_IRQ,
+            command=partial(self.on_interrupt_nat, MENU_ITEM_NAT_IRQ))
+        submenu_nat_int.add_command(
+            label=MENU_ITEM_NAT_NMI,
+            command=partial(self.on_interrupt_nat, MENU_ITEM_NAT_NMI))
+        submenu_nat_int.add_command(
+            label=MENU_ITEM_NAT_ABORT,
+            command=partial(self.on_interrupt_nat, MENU_ITEM_NAT_ABORT))
+        submenu_nat_int.add_command(
+            label=MENU_ITEM_NAT_BRK,
+            command=partial(self.on_interrupt_nat, MENU_ITEM_NAT_BRK))
+        submenu_nat_int.add_command(
+            label=MENU_ITEM_NAT_COP,
+            command=partial(self.on_interrupt_nat, MENU_ITEM_NAT_COP))
 
         self.menu_annotate = menu_annotate = tk.Menu(app.menu_bar)
         menu_annotate.add_command(
@@ -134,6 +186,7 @@ class DisassemblyView(ttk.Frame):
 
         menu_bar.entryconfig(MENU_SEARCH, state="disabled")
         menu_search.entryconfig(MENU_ITEM_GOTO, state="disabled")
+        menu_search.entryconfig(SUBMENU_INTERRUPTS, state="disabled")
         menu_search.entryconfig(MENU_ITEM_FOLLOW, state="disabled")
         menu_search.entryconfig(MENU_ITEM_RETURN, state="disabled")
 
@@ -152,6 +205,7 @@ class DisassemblyView(ttk.Frame):
 
         menu_bar.entryconfig(MENU_SEARCH, state="normal")
         menu_search.entryconfig(MENU_ITEM_GOTO, state="normal")
+        menu_search.entryconfig(SUBMENU_INTERRUPTS, state="normal")
 
     def handle_dasm_click(self, evt):
         # Prevent resizing columns.
@@ -298,6 +352,18 @@ class DisassemblyView(ttk.Frame):
         if address is not None:
             self.app.session.new_analysis(address)
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def on_interrupt_emu(self, kind):
+        address = self.app.session.get_address_of_interrupt_handler(
+            emulation=True, kind=kind)
+        self.app.session.new_analysis(address)
+        self.app.root.event_generate(events.ANALYSIS_UPDATED)
+
+    def on_interrupt_nat(self, kind):
+        address = self.app.session.get_address_of_interrupt_handler(
+            emulation=False, kind=kind)
+        self.app.session.new_analysis(address)
+        self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def on_inline_comment(self, *args):
         selected_id, display_index, orig_index, item = self.get_selected()
