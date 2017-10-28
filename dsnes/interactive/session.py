@@ -70,9 +70,9 @@ class Session:
             raise RuntimeError("No project is loaded")
         self.project.save()
 
-    def new_analysis(self, address):
+    def new_analysis(self, address, state=None):
         analyser = dsnes.Analyser(self.project)
-        analyser.analyse_function(address)
+        analyser.analyse_function(address, state)
         self.analysis_stack.clear()
         self.current_analysis = analyser
         self.line_number = 0

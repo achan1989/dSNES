@@ -356,13 +356,13 @@ class DisassemblyView(ttk.Frame):
     def on_interrupt_emu(self, kind):
         address = self.app.session.get_address_of_interrupt_handler(
             emulation=True, kind=kind)
-        self.app.session.new_analysis(address)
+        self.app.session.new_analysis(address, state="p=E")
         self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def on_interrupt_nat(self, kind):
         address = self.app.session.get_address_of_interrupt_handler(
             emulation=False, kind=kind)
-        self.app.session.new_analysis(address)
+        self.app.session.new_analysis(address, state="p=e")
         self.app.root.event_generate(events.ANALYSIS_UPDATED)
 
     def on_inline_comment(self, *args):
