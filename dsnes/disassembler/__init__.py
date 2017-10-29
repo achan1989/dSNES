@@ -1570,10 +1570,28 @@ codes = {
 def disassemble(addr, bus, state):
     original_addr = addr
 
+    # The first read must succeed.
     opcode = bus.read(addr); addr = increment_pc(addr)
-    op0 = bus.read(addr); addr = increment_pc(addr)
-    op1 = bus.read(addr); addr = increment_pc(addr)
-    op2 = bus.read(addr)
+    # Subsequent reads may fail. For example, an instruction with no operands
+    # is at the end of a bank, and the next bit of memory is unmapped.
+    # In this case, replace operands with None.
+    # TODO: this seems slightly risky ¯\_(ツ)_/¯
+    try:
+        op0 = bus.read(addr)
+    except dsnes.BusReadImpossible:
+        op0 = None
+    finally:
+        addr = increment_pc(addr)
+    try:
+        op1 = bus.read(addr)
+    except dsnes.BusReadImpossible:
+        op1 = None
+    finally:
+        addr = increment_pc(addr)
+    try:
+        op2 = bus.read(addr)
+    except dsnes.BusReadImpossible:
+        op2 = None
 
     # We should be able to deal with this, but let's not bother unless
     # we actually see such code in the wild.
