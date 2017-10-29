@@ -141,7 +141,8 @@ class Analyser:
                             print_address(address)
                             import pdb
                             pdb.set_trace()
-                        queue.append(taken_addr)
+                        call_list = self.calls_from[address]
+                        call_list.append((taken_addr, self.state))
                     elif action is dsnes.NextAction.ret:
                         break
                     else:
