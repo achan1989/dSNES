@@ -133,7 +133,7 @@ class QueryStringValidated(simpledialog._QueryString):
 class LabelDialog(ResizeDialog):
     """Dialog for modifying a line's labels."""
     def __init__(self, title, prompt, get_labels_fn, validate_fn, add_fn,
-                 remove_fn, parent=None):
+                 remove_fn, parent=None, default_new_value=None):
         if not parent:
             parent = tk._default_root
 
@@ -145,6 +145,7 @@ class LabelDialog(ResizeDialog):
         self.labels = tk.Variable()
         self.label_listbox = None
         self.made_changes = False
+        self.default_new_value = default_new_value
         super().__init__(parent, title)
 
     def body(self, master):
@@ -191,7 +192,8 @@ class LabelDialog(ResizeDialog):
 
     def on_add(self, *args):
         label_dialog = QueryStringValidated(
-            title="dSNES", prompt="New label:", validate_fn=self.validate_fn)
+            title="dSNES", prompt="New label:", validate_fn=self.validate_fn,
+            initialvalue=self.default_new_value)
         new_label = label_dialog.result
 
         if new_label is not None:

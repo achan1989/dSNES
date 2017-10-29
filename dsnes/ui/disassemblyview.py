@@ -507,7 +507,8 @@ class DisassemblyView(ttk.Frame):
             validate_fn=self.app.session.can_create_new_label,
             add_fn=add_fn,
             remove_fn=remove_fn,
-            parent=self.app.root)
+            parent=self.app.root,
+            default_new_value=self.app.session.get_hardware_label(address))
         if label_dialog.made_changes:
             self.app.session.refresh_analysis()
             self.app.root.event_generate(events.ANALYSIS_UPDATED)
