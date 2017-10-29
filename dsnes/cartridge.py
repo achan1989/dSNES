@@ -69,12 +69,12 @@ class Cartridge:
 
     @staticmethod
     def _load_sram(project):
-        config = project.config["ram"]
+        config = project.config.get("sram", None)
         if config:
             sram_size = int(config["size"], 0)
             assert sram_size > 0
             maps = config["map"]
-            assert len(maps) > 0, "Must map RAM somewhere"
+            assert len(maps) > 0, "Must map SRAM somewhere"
 
             def sram_label(addr):
                 if addr >= 0 and addr <= sram_size:
@@ -129,7 +129,7 @@ class Cartridge:
                     label_fn=dsnes.ppureg.get_label)
 
     @staticmethod
-    def _load_wram(project):
+    def _load_wram_default(project):
         wram_size = 0x20000
         small_map = 0x2000
         large_map = wram_size
@@ -137,7 +137,7 @@ class Cartridge:
             if addr >= 0 and addr <= wram_size:
                 return "wram_{:05x}".format(addr)
             else:
-                return "INVALID_WRAM"
+                return "INVALID_WRAM({:05x})".format(addr)
         mappings = (
             (0x00, 0x3f, 0, 0x1fff, small_map),
             (0x80, 0xbf, 0, 0x1fff, small_map),
@@ -149,6 +149,33 @@ class Cartridge:
                 addr_lo=addr_lo, addr_hi=addr_hi,
                 size=size,
                 label_fn=wram_label)
+
+    @staticmethod
+    def _load_wram(project):
+        config = project.config.get("wram", None)
+        if not config:
+            return Cartridge._load_wram_default(project)
+        else:
+            wram_size = int(config["size"], 0)
+            assert wram_size > 0
+            maps = config["map"]
+            assert len(maps) > 0, "Must map WRAM somewhere"
+
+            def wram_label(addr):
+                if addr >= 0 and addr <= wram_size:
+                    return "wram_{:05x}".format(addr)
+                else:
+                    return "INVALID_WRAM({:05x})".format(addr)
+
+            for m in maps:
+                (bank_lo, bank_hi, addr_lo, addr_hi,
+                    map_size, base, mask) = parse_map(m)
+                project.bus.map(
+                    bank_lo=bank_lo, bank_hi=bank_hi,
+                    addr_lo=addr_lo, addr_hi=addr_hi,
+                    size=map_size or wram_size,
+                    base=base, mask=mask,
+                    label_fn=wram_label)
 
 
 def parse_map(m):
