@@ -27,7 +27,7 @@ class Bus:
         self.labeller = {}
 
     def map(self, bank_lo, bank_hi, addr_lo, addr_hi, size=0, base=0,
-            mask=0, read_fn=None, label_fn=None):
+            mask=0, source_offset=0, read_fn=None, label_fn=None):
         if read_fn is None:
             read_fn = default_read_fn
         if label_fn is None:
@@ -48,7 +48,7 @@ class Bus:
                     "Target address {} has already been mapped".format(
                         target_addr))
 
-                offset = reduce_fn(target_addr, mask)
+                offset = reduce_fn(target_addr, mask) + source_offset
                 if size:
                     offset = base + mirror_fn(offset)
                 self.lookup[target_addr] = idx

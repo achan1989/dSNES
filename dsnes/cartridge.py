@@ -42,12 +42,13 @@ class Cartridge:
             rom_size = rom.size
             for m in maps:
                 (bank_lo, bank_hi, addr_lo, addr_hi,
-                    map_size, base, mask) = parse_map(m)
+                    map_size, base, mask, offset) = parse_map(m)
                 project.bus.map(
                     bank_lo=bank_lo, bank_hi=bank_hi,
                     addr_lo=addr_lo, addr_hi=addr_hi,
                     size=map_size or rom_size,
                     base=base, mask=mask,
+                    source_offset=offset,
                     read_fn=rom.read)
 
             return rom
@@ -60,11 +61,12 @@ class Cartridge:
             assert len(maps) > 0, "Must map SuperFX somewhere"
             for m in maps:
                 (bank_lo, bank_hi, addr_lo, addr_hi,
-                    size, base, mask) = parse_map(m)
+                    size, base, mask, offset) = parse_map(m)
                 assert (size, base, mask) == (0, 0, 0)
                 project.bus.map(
                     bank_lo=bank_lo, bank_hi=bank_hi,
                     addr_lo=addr_lo, addr_hi=addr_hi,
+                    source_offset=offset,
                     label_fn=dsnes.superfxreg.get_label)
 
     @staticmethod
@@ -84,12 +86,13 @@ class Cartridge:
 
             for m in maps:
                 (bank_lo, bank_hi, addr_lo, addr_hi,
-                    map_size, base, mask) = parse_map(m)
+                    map_size, base, mask, offset) = parse_map(m)
                 project.bus.map(
                     bank_lo=bank_lo, bank_hi=bank_hi,
                     addr_lo=addr_lo, addr_hi=addr_hi,
                     size=map_size or sram_size,
                     base=base, mask=mask,
+                    source_offset=offset,
                     label_fn=sram_label)
 
     @staticmethod
@@ -169,12 +172,13 @@ class Cartridge:
 
             for m in maps:
                 (bank_lo, bank_hi, addr_lo, addr_hi,
-                    map_size, base, mask) = parse_map(m)
+                    map_size, base, mask, offset) = parse_map(m)
                 project.bus.map(
                     bank_lo=bank_lo, bank_hi=bank_hi,
                     addr_lo=addr_lo, addr_hi=addr_hi,
                     size=map_size or wram_size,
                     base=base, mask=mask,
+                    source_offset=offset,
                     label_fn=wram_label)
 
 
@@ -195,5 +199,9 @@ def parse_map(m):
         mask = int(m["mask"], 0)
     except LookupError:
         mask = 0
+    try:
+        offset = int(m["offset"], 0)
+    except LookupError:
+        offset = 0
 
-    return bank_lo, bank_hi, addr_lo, addr_hi, size, base, mask
+    return bank_lo, bank_hi, addr_lo, addr_hi, size, base, mask, offset
